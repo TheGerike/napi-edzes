@@ -1,5 +1,5 @@
 /* Napi edzés – service worker (offline cache). Relatív útvonalak: bármely almappából működik. */
-const VERSION = '2.1.1';
+const VERSION = '2.2.0';
 const CACHE = 'napi-edzes-' + VERSION;
 
 const PRECACHE = [
@@ -11,6 +11,8 @@ const PRECACHE = [
   'css/neon.css',
   'js/figure.js',
   'js/figure3d.js',
+  'models/neon.glb',
+  'models/ronin.glb',
   'models/xbot.glb',
   'js/data.js',
   'js/app.js',

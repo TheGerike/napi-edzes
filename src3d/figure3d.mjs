@@ -3,16 +3,16 @@
    és azokra forgatjuk a modell csontjait (retargeting). Perspektivikus, háromnegyedes nézet. */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 const S = 0.01;                                    // 2D egység (cm) → m
 const Yv = new THREE.Vector3(0, 1, 0), DOWN = new THREE.Vector3(0, -1, 0);
 const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 let renderer = null, scene, camera, model = null, bones = {}, rest = new Map(), loading = false, failed = false;
-let props = {}, lastEx = null, camT = new THREE.Vector3(), camDist = 3, modelScale = 1, legLen = 1;
+let props = {}, lastEx = null, lastPose = null, camT = new THREE.Vector3(), camDist = 3, modelScale = 1, legLen = 1;
 const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3();
 const q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), q3 = new THREE.Quaternion();
 const V = (p, z = 0) => new THREE.Vector3(p[0] * S, -p[1] * S, z);
-const MODEL_URL = (document.currentScript && document.currentScript.dataset.model) || 'models/xbot.glb';
 
 /* ---------- jelenet ---------- */
 function groundTexture() {
@@ -81,48 +81,109 @@ function buildProps() {
   box.castShadow = box.receiveShadow = true; box.visible = false; scene.add(box); props.box = box;
 }
 
-/* ---------- modell betöltése és stilizálása ---------- */
-function loadModel() {
-  if (loading || model) return; loading = true;
-  const onLoad = g => {
-    model = g.scene;
-    const armor = new THREE.MeshStandardMaterial({ color: 0x7c7aa6, roughness: .22, metalness: .92 });
-    const joints = new THREE.MeshStandardMaterial({ color: 0x15121f, emissive: 0x00c8e0, emissiveIntensity: .12, roughness: .4, metalness: .5 });
-    model.traverse(o => {
-      if (o.isBone) bones[o.name.replace(/^mixamorig:?/, '')] = o;
-      if (o.isMesh) {
-        o.castShadow = true; o.frustumCulled = false;
-        o.material = /joint/i.test(o.material.name || '') ? joints : armor;
-      }
+/* ---------- karakterek ---------- */
+// Választható karakterek. A csontnevek normalizálva (kisbetű, sorszám-végződés és mixamorig: előtag nélkül).
+const SIDE = (r, l) => ({ R: r, L: l });
+const RIGS = {
+  mixamo: { Hips: 'hips', Spine: 'spine', Spine1: 'spine1', Spine2: 'spine2', Neck: 'neck', Head: 'head', HeadEnd: 'headtop_end',
+    UpLeg: SIDE('rightupleg', 'leftupleg'), Leg: SIDE('rightleg', 'leftleg'), Foot: SIDE('rightfoot', 'leftfoot'), Toe: SIDE('righttoebase', 'lefttoebase'), ToeEnd: SIDE('righttoe_end', 'lefttoe_end'),
+    Arm: SIDE('rightarm', 'leftarm'), Fore: SIDE('rightforearm', 'leftforearm'), Hand: SIDE('righthand', 'lefthand') },
+  cc: { Hips: 'cc_base_hip', Spine: 'cc_base_waist', Spine1: 'cc_base_spine01', Spine2: 'cc_base_spine02', Neck: 'cc_base_necktwist01', Head: 'cc_base_head',
+    UpLeg: SIDE('cc_base_r_thigh', 'cc_base_l_thigh'), Leg: SIDE('cc_base_r_calf', 'cc_base_l_calf'), Foot: SIDE('cc_base_r_foot', 'cc_base_l_foot'), Toe: SIDE('cc_base_r_toebase', 'cc_base_l_toebase'),
+    Arm: SIDE('cc_base_r_upperarm', 'cc_base_l_upperarm'), Fore: SIDE('cc_base_r_forearm', 'cc_base_l_forearm'), Hand: SIDE('cc_base_r_hand', 'cc_base_l_hand') },
+  simple: { Hips: 'hips', Spine: 'spine1', Spine1: 'spine2', Spine2: 'spine3', Neck: 'neck', Head: 'head',
+    UpLeg: SIDE('r_leg', 'l_leg'), Leg: SIDE('r_knee', 'l_knee'), Foot: SIDE('r_foot', 'l_foot'), Toe: SIDE('r_toes', 'l_toes'),
+    Arm: SIDE('r_arm', 'l_arm'), Fore: SIDE('r_forearm', 'l_forearm'), Hand: SIDE('r_hand', 'l_hand') }
+};
+const CHARS = {
+  neon: { file: 'models/neon.glb', rig: 'cc' },
+  ronin: { file: 'models/ronin.glb', rig: 'simple' },
+  android: { file: 'models/xbot.glb', rig: 'mixamo', style: 'android' }
+};
+const MODEL_DIR = (() => { const u = document.currentScript && document.currentScript.dataset.model; return u ? u.replace(/[^/]*$/, '') : 'models/'; })();
+let charId = 'neon', holder = null, loadSeq = 0;
+const norm = n => n.toLowerCase().replace(/^mixamorig:?/, '').replace(/_\d+$/, '').replace(/[\s_]+/g, '_');
+
+function stylizeAndroid(root) {
+  const armor = new THREE.MeshStandardMaterial({ color: 0x7c7aa6, roughness: .22, metalness: .92 });
+  const joints = new THREE.MeshStandardMaterial({ color: 0x15121f, emissive: 0x00c8e0, emissiveIntensity: .12, roughness: .4, metalness: .5 });
+  root.traverse(o => { if (o.isMesh) o.material = /joint/i.test(o.material.name || '') ? joints : armor; });
+  const head = bones.Head;
+  if (head) {
+    const k = 1 / head.getWorldScale(new THREE.Vector3()).x;
+    const vis = new THREE.Mesh(new THREE.BoxGeometry(.185, .034, .075), new THREE.MeshBasicMaterial({ color: 0x00e5ff, toneMapped: false }));
+    vis.scale.setScalar(k); vis.position.set(0, .075 * k, .075 * k); head.add(vis);
+  }
+}
+function tuneMaterials(root) {
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    ms.forEach(m => {
+      if (m.transparent && m.map) { m.transparent = false; m.alphaTest = .4; m.depthWrite = true; }  // haj: nincs rendezési villogás
+      if (m.envMapIntensity !== undefined) m.envMapIntensity = 1;
     });
-    Object.values(bones).forEach(b => rest.set(b, b.quaternion.clone()));
-    // a modell +Z felé néz → forgassuk +X (a 2D „előre”) felé; a jobb oldala így +Z (a kamera felé)
-    model.rotation.y = Math.PI / 2;
-    scene.add(model); model.updateMatrixWorld(true);
-    // méretezés: a modell lábhossza = a 2D csontváz lábhossza (92 cm)
-    const p = n => bones[n].getWorldPosition(new THREE.Vector3());
-    const raw = p('RightUpLeg').distanceTo(p('RightLeg')) + p('RightLeg').distanceTo(p('RightFoot'));
-    modelScale = .92 / raw; model.scale.setScalar(modelScale); model.updateMatrixWorld(true);
-    legLen = .92;
-    // vizor: neon csík a fej elején (a Head csonthoz kötve)
-    const head = bones.Head;
-    if (head) {
-      model.updateMatrixWorld(true);
-      const ws = head.getWorldScale(new THREE.Vector3()).x, k = 1 / ws;
-      const glow = c => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
-      const vis = new THREE.Mesh(new THREE.BoxGeometry(.185, .034, .075), glow(0x00e5ff));
-      vis.scale.setScalar(k); vis.position.set(0, .075 * k, .075 * k); head.add(vis);
-    }
-    loading = false;
-  };
-  const onErr = () => { loading = false; failed = true; };
-  if (window.MODEL_B64) {   // beágyazott modell (pl. ahol .glb fájl nem szolgálható ki)
-    try {
-      const bin = atob(window.MODEL_B64), buf = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-      new GLTFLoader().parse(buf.buffer, '', onLoad, onErr);
-    } catch (e) { onErr(); }
-  } else new GLTFLoader().load(MODEL_URL, onLoad, undefined, onErr);
+  });
+}
+
+function setupModel(gltf, cfg, seq) {
+  if (seq !== loadSeq) return;
+  const sc = gltf.scene;
+  holder = new THREE.Group(); holder.add(sc);
+  bones = {}; rest = new Map();
+  const R = RIGS[cfg.rig], byName = {};
+  sc.traverse(o => { if (o.isBone || o.type === 'Object3D' || o.isObject3D) { const k = norm(o.name || ''); if (k && !byName[k]) byName[k] = o; } if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  Object.entries(R).forEach(([k, v]) => {
+    if (typeof v === 'string') { if (byName[v]) bones[k] = byName[v]; }
+    else { if (byName[v.R]) bones['R' + k] = byName[v.R]; if (byName[v.L]) bones['L' + k] = byName[v.L]; }
+  });
+  sc.traverse(o => { if (o.isBone) rest.set(o, o.quaternion.clone()); });
+  Object.values(bones).forEach(b => rest.set(b, b.quaternion.clone()));
+  scene.add(holder); holder.updateMatrixWorld(true);
+  const p = k => bones[k].getWorldPosition(new THREE.Vector3());
+  // forgatás: a modell jobb oldala nézzen a kamera felé (+Z), arca előre (+X)
+  const r = p('RUpLeg').sub(p('LUpLeg')); r.y = 0; r.normalize();
+  holder.rotation.y = Math.atan2(-r.x, r.z); holder.updateMatrixWorld(true);
+  // méretezés: lábhossz = 92 cm
+  const raw = p('RUpLeg').distanceTo(p('RLeg')) + p('RLeg').distanceTo(p('RFoot'));
+  holder.scale.setScalar(.92 / raw); holder.updateMatrixWorld(true);
+  if (cfg.style === 'android') stylizeAndroid(sc); else tuneMaterials(sc);
+  model = holder; loading = false; lastPose = null;
+}
+
+function disposeModel() {
+  if (!holder) return;
+  scene.remove(holder);
+  holder.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); }); m.dispose(); });
+  });
+  holder = null; model = null;
+}
+
+function loadModel() {
+  const cfg = CHARS[charId] || CHARS.neon, seq = ++loadSeq;
+  loading = true; failed = false;
+  const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+  const onErr = () => { if (seq !== loadSeq) return; loading = false; if (charId !== 'android') { charId = 'android'; loadModel(); } else failed = true; };
+  const parseB64 = b64 => { try { const bin = atob(b64), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    loader.parse(buf.buffer, '', g => setupModel(g, cfg, seq), onErr); } catch (e) { onErr(); } };
+  const emb = window.MODELS_B64;
+  if (emb) {   // beágyazott modellek (artifact): js/model-<id>.js tölti be
+    if (emb[charId]) return parseB64(emb[charId]);
+    const s = document.createElement('script'); s.src = 'js/model-' + charId + '.js';
+    s.onload = () => emb[charId] ? parseB64(emb[charId]) : onErr(); s.onerror = onErr; document.head.appendChild(s);
+    return;
+  }
+  loader.load(MODEL_DIR + cfg.file.replace(/^models\//, ''), g => setupModel(g, cfg, seq), undefined, onErr);
+}
+
+function setChar(id) {
+  if (!CHARS[id]) id = 'neon';
+  if (id === charId && (model || loading)) return;
+  charId = id;
+  if (!renderer) return;           // a jelenet még nem jött létre: az első rajzoláskor töltődik
+  disposeModel(); loadModel();
 }
 
 /* ---------- csontforgatás (retargeting) ---------- */
@@ -131,7 +192,7 @@ function aim(boneName, childName, dir, viaDown) {
   const b = bones[boneName], c = bones[childName]; if (!b || !c || !dir) return;
   b.updateWorldMatrix(true, false); c.updateWorldMatrix(false, false);
   const bp = b.getWorldPosition(v1), cp = c.getWorldPosition(v2);
-  const cur = v3.subVectors(cp, bp).normalize();
+  const cur = v3.subVectors(cp, bp); if (cur.lengthSq() < 1e-10) return; cur.normalize();
   if (viaDown) { q1.setFromUnitVectors(cur, DOWN); q2.setFromUnitVectors(DOWN, dir); q1.premultiply(q2); }
   else q1.setFromUnitVectors(cur, dir);
   b.getWorldQuaternion(q2);
@@ -148,30 +209,39 @@ function pose(T) {
   // törzs a gerincív mentén (alsó, középső, felső szakasz)
   const B = t => { const a = (1 - t) * (1 - t), b2 = 2 * (1 - t) * t, c = t * t;
     return [a * T.hip[0] + b2 * T.ctl[0] + c * T.neck[0], a * T.hip[1] + b2 * T.ctl[1] + c * T.neck[1]]; };
-  aim('Hips', 'Spine', dirOf(B(0), B(.25)));
-  aim('Spine', 'Spine1', dirOf(B(.2), B(.5)));
-  aim('Spine1', 'Spine2', dirOf(B(.45), B(.75)));
-  aim('Spine2', 'Neck', dirOf(B(.7), B(1)));
-  aim('Neck', 'Head', dirOf(T.neck, T.head));
-  aim('Head', 'HeadTop_End', dirOf(T.neck, T.head));
-  // lábak: közeli (2D 'n') = jobb oldal, távoli = bal
-  [['Right', 'n'], ['Left', 'f']].forEach(([s, k]) => {
+  aim('Hips', 'Spine1', dirOf(B(0), B(.3)));
+  aim('Spine', 'Spine1', dirOf(B(.15), B(.45)));
+  aim('Spine1', 'Spine2', dirOf(B(.4), B(.72)));
+  aim('Spine2', 'Neck', dirOf(B(.68), B(1)));
+  // fej: a nyugalmi tartást megőrizzük, csak a törzshöz képesti 2D eltérést forgatjuk rá (különben felszegi az állát)
+  const ang = (a, b) => Math.atan2(-(b[1] - a[1]), b[0] - a[0]);
+  let dh = ang(T.neck, T.head) - ang(B(.68), B(1)); dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  if (bones.Neck && Math.abs(dh) > 1e-3) {
+    const b = bones.Neck; q1.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dh);
+    b.getWorldQuaternion(q2); q3.copy(q1).multiply(q2); b.parent.getWorldQuaternion(q2).invert(); b.quaternion.copy(q2.multiply(q3)); b.updateWorldMatrix(false, true);
+  }
+  // lábak, karok: közeli (2D 'n') = jobb oldal, távoli = bal
+  [['R', 'n'], ['L', 'f']].forEach(([s, k]) => {
     aim(s + 'UpLeg', s + 'Leg', dirOf(T.hip, T['k' + k]));
     aim(s + 'Leg', s + 'Foot', dirOf(T['k' + k], T['a' + k]));
-    aim(s + 'Foot', s + 'ToeBase', dirOf(T['a' + k], T['t' + k]));
-    aim(s + 'Arm', s + 'ForeArm', dirOf(T.sho, T['e' + k]), true);
-    aim(s + 'ForeArm', s + 'Hand', dirOf(T['e' + k], T['w' + k]));
+    aim(s + 'Foot', s + 'Toe', dirOf(T['a' + k], T['t' + k]));
+    aim(s + 'Arm', s + 'Fore', dirOf(T.sho, T['e' + k]), true);
+    aim(s + 'Fore', s + 'Hand', dirOf(T['e' + k], T['w' + k]));
   });
   model.updateMatrixWorld(true);
   // talajra ejtés: a legalacsonyabb pont (testvastagsággal) érintse a padlót
-  const pad = { Hips: .12, Spine: .12, Spine1: .12, Spine2: .13, Head: .12, HeadTop_End: .02, Neck: .07,
-    RightLeg: .06, LeftLeg: .06, RightFoot: .045, LeftFoot: .045, RightToeBase: .03, LeftToeBase: .03, RightToe_End: .02, LeftToe_End: .02,
-    RightHand: .04, LeftHand: .04, RightForeArm: .045, LeftForeArm: .045, RightUpLeg: .09, LeftUpLeg: .09, RightArm: .06, LeftArm: .06 };
+  const pad = { Hips: .12, Spine: .12, Spine1: .12, Spine2: .13, Head: .12, HeadEnd: .02, Neck: .07,
+    RLeg: .06, LLeg: .06, RFoot: .045, LFoot: .045, RToe: .03, LToe: .03, RToeEnd: .02, LToeEnd: .02,
+    RHand: .04, LHand: .04, RFore: .045, LFore: .045, RUpLeg: .09, LUpLeg: .09, RArm: .06, LArm: .06 };
   let minY = 1e9;
   Object.entries(pad).forEach(([n, p]) => { const b = bones[n]; if (b) minY = Math.min(minY, b.getWorldPosition(v1).y - p); });
+  if (!bones.HeadEnd && bones.Head) {   // fejtető becslése: nyak→fej irányban
+    const h = bones.Head.getWorldPosition(new THREE.Vector3()), n = bones.Neck.getWorldPosition(v2);
+    minY = Math.min(minY, h.clone().add(h.clone().sub(n).normalize().multiplyScalar(.2)).y - .02);
+  }
   // vízszintes horgony: a 2D-ben rögzített ízület maradjon a helyén
-  const anch = T.__anch || 'an', map = { an: 'RightFoot', af: 'LeftFoot', hip: 'Hips', kn: 'RightLeg', kf: 'LeftLeg', wn: 'RightHand', wf: 'LeftHand' };
-  const ab = bones[map[anch] || 'RightFoot'];
+  const anch = T.__anch || 'an', map = { an: 'RFoot', af: 'LFoot', hip: 'Hips', kn: 'RLeg', kf: 'LLeg', wn: 'RHand', wf: 'LHand' };
+  const ab = bones[map[anch] || 'RFoot'];
   const ax = ab ? ab.getWorldPosition(v1).x : 0, tx = (T[anch] ? T[anch][0] : T.an[0]) * S;
   model.position.set(tx - ax, -minY, 0); model.updateMatrixWorld(true);
 }
@@ -181,12 +251,12 @@ function placeProps(ex) {
   const pr = ex.prop; if (!pr) return;
   const hand = n => bones[n].getWorldPosition(new THREE.Vector3());
   if (pr.kb) {
-    const p = pr.kb === 'both' ? hand('RightHand').add(hand('LeftHand')).multiplyScalar(.5) : hand(pr.kb === 'n' ? 'RightHand' : 'LeftHand');
+    const p = pr.kb === 'both' ? hand('RHand').add(hand('LHand')).multiplyScalar(.5) : hand(pr.kb === 'n' ? 'RHand' : 'LHand');
     props.kb.position.copy(p).add(new THREE.Vector3(0, -.02, 0)); props.kb.visible = true;
   }
   if (pr.db) {
-    if (pr.db === 'both' || pr.db === 'n') { props.dbR.position.copy(hand('RightHand')); props.dbR.visible = true; }
-    if (pr.db === 'both' || pr.db === 'f') { props.dbL.position.copy(hand('LeftHand')); props.dbL.visible = true; }
+    if (pr.db === 'both' || pr.db === 'n') { props.dbR.position.copy(hand('RHand')); props.dbR.visible = true; }
+    if (pr.db === 'both' || pr.db === 'f') { props.dbL.position.copy(hand('LHand')); props.dbL.visible = true; }
   }
 }
 
@@ -238,4 +308,4 @@ function ok() {
   if (document.documentElement.dataset.fig === 'sprite') okCache = false;
   return okCache;
 }
-window.FIG3D = { ok, draw, ready: () => !!model };
+window.FIG3D = { ok, draw, setChar, char: () => charId, ready: () => !!model };

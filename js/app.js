@@ -11,13 +11,16 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.1.1';
+const APP_VERSION = '2.2.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
-const defSet = () => ({ beep: true, voice: true, auto: true, wake: true });
+const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon' });
+const CHARS = [['neon', 'Neon', 'kiberpunk lány'], ['ronin', 'Ronin', 'kiborg műkarral'], ['android', 'Android', 'krómrobot']];
+const setChar3d = () => { try { window.FIG3D && FIG3D.setChar && FIG3D.setChar(ST.set.char || 'neon'); } catch (e) {} };
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
 const norm = r => Object.assign(def(), r, { set: Object.assign(defSet(), r.set || {}), log: Array.isArray(r.log) ? r.log : [],
   plusPtr: Number.isInteger(r.plusPtr) && r.plusPtr >= 0 ? r.plusPtr : 0 });
 let ST = (() => { try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.v === 1) return norm(r); } catch (e) {} return def(); })();
+setChar3d();
 function save() {
   ST.updatedAt = Date.now();
   try { localStorage.setItem(LS, JSON.stringify(ST)); } catch (e) {}
@@ -170,6 +173,10 @@ function renderHome() {
        ['auto', 'Automatikus továbblépés', 'Ha kikapcsolod, minden gyakorlat végén megáll, és te lépsz tovább.'],
        ['wake', 'Kijelző ébren tartása', 'Edzés közben nem alszik el a telefon.']]
       .map(([k, l, d]) => `<div class="set"><label for="set-${k}">${l}<small>${d}</small></label><input type="checkbox" class="switch" id="set-${k}" data-set="${k}" ${ST.set[k] ? 'checked' : ''}></div>`).join('')}
+    <div class="set"><label>Edző karakter<small>Ő mutatja a gyakorlatokat.</small></label></div>
+    <div class="chips three" role="group" aria-label="Edző karakter">
+      ${CHARS.map(([k, n, d]) => `<button class="chip" data-char="${k}" aria-pressed="${(ST.set.char || 'neon') === k}"><b>${n}</b><span>${d}</span></button>`).join('')}
+    </div>
     <p class="muted" style="margin:0">Az adataid csak ezen a telefonon tárolódnak. Készíts rendszeresen mentést.</p>
     <div class="set music"><label for="musicUrl">Zene: Spotify lejátszási lista<small>A „Zene” gomb ezt nyitja meg a Spotify appban. Bármelyik lista linkjét beillesztheted (Spotify: Megosztás → Link másolása).</small></label></div>
     <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="musicUrl" class="bktext" style="min-height:0;height:44px;resize:none;flex:1" value="${esc(musicUrl())}" inputmode="url" autocomplete="off"><button class="btn small" id="musicSave">Mentés</button></div>
@@ -189,6 +196,12 @@ function renderHome() {
   </div></details>
 
 <details class="card fold" data-fold="info" ${foldOpen("info")}><summary><h2>Tudnivalók</h2></summary><div class="foldbody">
+    <details><summary>A karakterek forrása</summary>
+      <ul>
+        <li><b>Neon:</b> „Character Cyberpunk FREE 3d”, készítette OSCAR CREATIVO (sketchfab.com/oscar_creativo), CC BY-NC 4.0 licenc. Átalakítva: fegyverek nélkül, telefonra optimalizálva.</li>
+        <li><b>Ronin:</b> „Cyberpunk character”, készítette 4d_Bob (sketchfab.com/3d_Bob), CC BY 4.0 licenc. Telefonra optimalizálva.</li>
+        <li><b>Android:</b> Xbot (Mixamo / Adobe, a three.js példáiból).</li>
+      </ul></details>
     <details><summary>Hogyan működik?</summary>
       <ul>
         <li><b>Az alap a kötelező rész:</b> kb. 16 perc, eszköz nélkül, bárhol (otthon, szállodában, nyaralás alatt is): bemelegítés, alap kör, nyújtás. Az <b>A</b> (guggolás, nyomás, hát) és a <b>B</b> (kitörés, csípő, has) felváltva jön.</li>
@@ -239,6 +252,8 @@ function renderHome() {
     if (v && !/^https:\/\/open\.spotify\.com\//.test(v)) { $('#musicUrl').value = musicUrl(); sheet('<h2>Ez nem Spotify-link</h2><p class="muted">A link így kezdődjön: https://open.spotify.com/ (Spotify appban: Megosztás → Link másolása).</p><div class="btns"><button class="btn primary" id="shNo">Rendben</button></div>', { shNo: closeSheet }); return; }
     ST.set.music = v.replace(/[?#].*$/, ''); save(); renderHome();
   };
+  document.querySelectorAll('[data-char]').forEach(b => b.onclick = () => { ST.set.char = b.dataset.char; save(); setChar3d();
+    document.querySelectorAll('[data-char]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   document.querySelectorAll('[data-solo]').forEach(b => b.onclick = () => start('P', 0, ST.level, b.dataset.solo));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => askDelete(+b.dataset.del));
   document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { pick = b.dataset.pick === nt ? null : b.dataset.pick; renderHome(); });
@@ -379,7 +394,7 @@ function confirmRestore({ data, exportedAt }) {
     <p class="muted" style="margin:0">A mentés felülírja a mostani adataidat ezen a telefonon (${ST.log.length} edzés). Ez nem vonható vissza.</p>
     <div class="btns"><button class="btn primary" id="shYes">Igen, visszaállítom</button><button class="btn" id="shNo">Mégse</button></div>`, {
     shYes: () => {
-      ST = norm(data); save(); clearRun(); closeSheet(); pick = null; pickPlus = null; renderHome();
+      ST = norm(data); save(); setChar3d(); clearRun(); closeSheet(); pick = null; pickPlus = null; renderHome();
       setBkMsg(`Visszaállítva: ${n} edzés, ${ST.level}. szint.`);
     },
     shNo: closeSheet
