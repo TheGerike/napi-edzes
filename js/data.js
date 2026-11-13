@@ -341,6 +341,12 @@ EX.guggnyujto = {
   cues: ['Guggolj le, kezek a térdek elé', 'Felálláskor nyújtózz fel a fejed fölé', 'Tempós, folyamatos ritmus, sarok lent a földön'],
   easy: 'Kisebb guggolás, lassabban'
 };
+EX.terpesz = {
+  name: 'Terpeszugrás', dur: 1.1, hold: 0.05, anch: 'an',
+  frames: [S({ a: [[8, 8], [-8, -8]] }), S({ a: [[172, 172], [188, 188]], air: 5 })],
+  cues: ['Puha érkezés a talpad elején', 'Karok fel, lábak terpeszbe egyszerre', 'Hasat feszítsd, egyenes hát'],
+  easy: 'Lépő változat: ugrás nélkül, felváltva lépj ki oldalra'
+};
 EX.arnyekbox = {
   name: 'Árnyékbox', dur: 1.1, hold: 0.06,
   frames: [
@@ -410,8 +416,8 @@ const PLUS = {
   pulzus: { name: 'Pulzusemelő (burpee és társai)', short: 'Pulzus', gear: 'eszköz nélkül',
     levels: {
       1: { work: 30, rest: 20, rounds: 2, st: ['menetel', 'lepoburpee', 'arnyekbox'] },
-      2: { work: 35, rest: 15, rounds: 2, st: ['lepoburpee', 'arnyekbox', 'guggnyujto'] },
-      3: { work: 35, rest: 15, rounds: 2, st: ['burpee', 'hegymaszo', 'guggnyujto'] }
+      2: { work: 35, rest: 15, rounds: 2, st: ['lepoburpee', 'arnyekbox', 'terpesz'] },
+      3: { work: 35, rest: 15, rounds: 2, st: ['burpee', 'terpesz', 'hegymaszo'] }
     } },
   core: { name: 'Has / core', short: 'Core', gear: 'eszköz nélkül',
     levels: {

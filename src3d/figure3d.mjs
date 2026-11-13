@@ -231,7 +231,8 @@ const dirOf = (a, b) => new THREE.Vector3((b[0] - a[0]) * S, -(b[1] - a[1]) * S,
 const MOCAP = {
   guggolas: { clip: 'squat' }, guggolas_tempo: { clip: 'squat' },
   fekvo: { clip: 'pushup' }, fekvo_lassu: { clip: 'pushup' },
-  burpee: { clip: 'burpee' }, arnyekbox: { clip: 'jab', natural: true }
+  burpee: { clip: 'burpee' }, arnyekbox: { clip: 'jab', natural: true },
+  terpesz: { clip: 'jacks', natural: true }, goblet: { clip: 'squatbent' }, goblet_tempo: { clip: 'squatbent' }
 };
 const motions = {};   // név → { root, mixer, dur, j: {kulcs: csont} } | 'loading' | 'fail'
 const MJ = { Hips: 'hips', Spine: 'spine', Spine1: 'spine1', Spine2: 'spine2', Neck: 'neck', Head: 'head',

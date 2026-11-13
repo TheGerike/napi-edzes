@@ -11,5 +11,5 @@ shade.glb  – "10000 Followers! Milestone - Shade of Neo-Tokyo" (https://sketch
 katana.glb – "Cyborg with Thermal Katana" (https://sketchfab.com/3d-models/cyborg-with-thermal-katana-f8e8fb734bac4b5f83f8d3d6ba78797c)
              by SpatialNeglect (https://sketchfab.com/jeandiz), Sketchfab Free Standard license.
              Changes: pistol removed; katana moved to the back; mesh simplified; textures 512 px WebP; meshopt compression.
-motions/*.glb – Mozgásrögzítéses animációk (Air Squat, Push Up, Burpee, Jab Cross) a Mixamo-ról (Adobe, https://www.mixamo.com),
+motions/*.glb – Mozgásrögzítéses animációk (Air Squat, Air Squat Bent Arms, Push Up, Burpee, Jumping Jacks, Jab Cross) a Mixamo-ról (Adobe, https://www.mixamo.com),
              a Mixamo felhasználási feltételei szerint, az appba beépítve (önállóan nem terjesztve). FBX → glTF: FBX2glTF.
