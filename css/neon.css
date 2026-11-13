@@ -225,3 +225,4 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
   filter: drop-shadow(0 0 6px rgb(0 229 255 / .25)); }
 .rest-mode .fig canvas.sprite { filter: saturate(.55) brightness(.8); }
 @media (max-height: 640px) { .fig canvas.sprite { max-height: 28vh; } }
+.fig { background: radial-gradient(closest-side at 50% 58%, rgb(0 229 255 / .13), rgb(255 46 136 / .06) 60%, transparent 100%); }

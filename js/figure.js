@@ -300,13 +300,14 @@ const FIG = (() => {
   const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const dim = (h, f) => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * f).toString(16).padStart(2, '0')).join(''); };
   const C = {
-    skin: ['#9A5E48', '#C98B6B', '#E8B092'],
-    top: ['#15121C', '#262233', '#433D5A'],
-    pants: ['#2F341E', '#495033', '#6B7450'],
-    boot: ['#0C0B12', '#1E1D28', '#3A3A4A'],
-    glove: ['#0C0B12', '#1E1D28', '#3A3A4A'],
-    belt: '#5A3A20', buckle: '#C8D0DA', beard: '#3A2A2A', tattoo: '#1F7F94',
-    eye: '#00E5FF', eyeHi: '#E9FEFF', implant: '#8A97A6', logo: '#FF2E88',
+    skin: ['#8E5844', '#C08468', '#E2A98C'],
+    jacket: ['#17132A', '#2E2849', '#544A80'],
+    pants: ['#141224', '#27233D', '#47416A'],
+    boot: ['#0B0A12', '#1F1C2C', '#403C55'],
+    glove: ['#08070C', '#17151F', '#33303F'],
+    hair: ['#8A1550', '#FF2E88', '#FF9CC8'], shaved: '#3A2E40',
+    seam: '#00E5FF', hot: '#FF2E88', visor: '#00E5FF', visorHi: '#E9FEFF', gold: '#FFC21A',
+    beard: '#2C2230', implant: '#8A97A6',
     iron: ['#1C2028', '#323946', '#6B7686'], ground: '#3B2770', shadow: '#05020C', box: '#2A1F4A'
   };
   const FAR = 0.62;
@@ -354,20 +355,29 @@ const FIG = (() => {
       const P = far ? farOf(C.pants) : C.pants, Bt = far ? farOf(C.boot) : C.boot;
       const Hp = T.hip, K = T['k' + k], A = T['a' + k], Tt = T['t' + k];
       limb(Hp, K, S(19), P); limb(K, A, S(15), P);
-      const sd = norm2(sub2(A, K));
-      limb(add2(A, mul2(sd, -11)), A, S(15), Bt);                 // bakancsszár
-      limb(add2(A, mul2(norm2(sub2(Tt, A)), -3)), add2(Tt, mul2(norm2(sub2(Tt, A)), 3)), S(11), Bt);   // lábfej
-      if (!far) { const kp = X(K); px([kp[0], kp[1]], P[2], 2, 1); }   // térdfolt fény
+      const sd = norm2(sub2(A, K)), fd = norm2(sub2(Tt, A)), fn = [-fd[1], fd[0]];
+      limb(add2(A, mul2(sd, -12)), A, S(16), Bt);                 // magas szárú bakancs
+      limb(add2(A, mul2(fd, -3)), add2(Tt, mul2(fd, 3)), S(12), Bt);
+      // neon talp: a lábfej alsó éle
+      const s1 = add2(add2(A, mul2(fd, -4)), mul2(fn, fn[1] > 0 ? 6 : -6)), s2 = add2(add2(Tt, mul2(fd, 4)), mul2(fn, fn[1] > 0 ? 6 : -6));
+      stroke([X(s1), X(s2)], 1, far ? farOf(C.seam) : C.seam);
+      // fénylő térdcsík + combszíj
+      const kn = X(add2(K, mul2(sd, 4))), kd = [-sd[1] * 1, sd[0]];
+      stroke([[kn[0] - kd[0] * 2.5, kn[1] - kd[1] * 2.5], [kn[0] + kd[0] * 2.5, kn[1] + kd[1] * 2.5]], 1, far ? farOf(C.hot) : C.hot);
+      if (!far) { const th = X(add2(Hp, mul2(norm2(sub2(K, Hp)), 26))); px(th, C.gold, 2, 1); }
     };
     const arm = (k, far) => {
-      const Sk = far ? farOf(C.skin) : C.skin, G = far ? farOf(C.glove) : C.glove;
+      const J = far ? farOf(C.jacket) : C.jacket, G = far ? farOf(C.glove) : C.glove;
       const Sh = T.sho, E = T['e' + k], Wr = T['w' + k];
-      limb(Sh, E, S(16), Sk); limb(E, Wr, S(12.5), Sk);
-      const wd = norm2(sub2(Wr, E));
-      limb(add2(Wr, mul2(wd, -4)), add2(Wr, mul2(wd, 3)), S(12), G);   // ujjatlan kesztyű
-      // tetoválás a felkaron
-      const a = X(add2(Sh, mul2(norm2(sub2(E, Sh)), 9))), b = X(add2(Sh, mul2(norm2(sub2(E, Sh)), 24)));
-      stroke([a, b], 1, far ? farOf(C.tattoo) : C.tattoo);
+      limb(Sh, E, S(17), J); limb(E, Wr, S(14), J);
+      const ud = norm2(sub2(E, Sh)), wd = norm2(sub2(Wr, E));
+      // fénylő varrat a felkaron, áramköri minta az alkaron
+      stroke([X(add2(Sh, mul2(ud, 6))), X(add2(E, mul2(ud, -3)))], 1, far ? farOf(C.seam) : C.seam);
+      if (!far) {
+        const a1 = X(add2(E, mul2(wd, 6))), a2 = X(add2(E, mul2(wd, 20)));
+        px(a1, C.seam); px(a2, C.seam); px([(a1[0] + a2[0]) / 2, (a1[1] + a2[1]) / 2], C.hot);
+      }
+      limb(add2(Wr, mul2(wd, -2)), add2(Wr, mul2(wd, 4)), S(12.5), G);   // kesztyű
     };
     const prop = pp => {
       const [x, y] = X(pp.at), iron = pp.far ? farOf(C.iron) : C.iron;
@@ -390,20 +400,24 @@ const FIG = (() => {
     const prof = [[0, 13, 13], [.3, 12, 11.5], [.55, 14.5, 12.5], [.78, 16.5, 14], [.9, 15, 13]];
     const fr = [], bk = [];
     prof.forEach(([t, wf, wb]) => { const p = Bz(t), tg = BT(t), bn = [tg[1], -tg[0]]; fr.push(X(add2(p, mul2(bn, -wf)))); bk.push(X(add2(p, mul2(bn, wb)))); });
-    // nyak + váll (bőr) az atléta mögött
-    limb(Bz(.82), T.neck, S(13), C.skin);
-    limb(add2(T.sho, mul2(back, 6)), add2(T.sho, mul2(front, 7)), S(11), C.skin);
-    // vállsapkák (deltaizom) a karok tövénél
-    limb(add2(T.sho, mul2(d, -3)), add2(T.sho, mul2(d, 2)), S(17), C.skin);
-    fillPoly(fr.concat([...bk].reverse()), C.top[1]);
-    const awayFront = (back[0] * LV[0] + back[1] * LV[1]) > 0;            // a mellkas oldala van árnyékban?
-    stroke(awayFront ? fr : bk, Math.max(1.5, S(5)), C.top[0]);
-    stroke(awayFront ? bk.slice(1) : fr.slice(1), 1, C.top[2]);
-    { const p = X(Bz(.7)), tg = BT(.7), bn = [tg[1], -tg[0]]; const q = X(add2(Bz(.7), mul2(bn, -7))); px(q, C.logo, 2, 2); }
+    // nyak (bőr), dzseki-törzs, magas gallér
+    limb(Bz(.84), T.neck, S(11), C.skin);
+    limb(add2(T.sho, mul2(d, -3)), add2(T.sho, mul2(d, 2)), S(19), C.jacket);       // vállak
+    fillPoly(fr.concat([...bk].reverse()), C.jacket[1]);
+    const awayFront = (back[0] * LV[0] + back[1] * LV[1]) > 0;
+    stroke(awayFront ? fr : bk, Math.max(1.5, S(5)), C.jacket[0]);
+    stroke(awayFront ? bk.slice(1) : fr.slice(1), 1, C.jacket[2]);
+    // nyitott dzseki: neon belső felső a mellkas elején + cipzár-varrat
+    { const pts2 = [.38, .55, .72, .86].map(t => { const p = Bz(t), tg = BT(t), bn = [tg[1], -tg[0]]; return X(add2(p, mul2(bn, -[11, 12.5, 14, 13][[.38, .55, .72, .86].indexOf(t)] + 1))); });
+      stroke(pts2, Math.max(1.5, S(5)), C.hot); stroke(pts2.map(p => [p[0] + 0, p[1]]), 1, '#FF9CC8'); }
+    stroke([.1, .3, .5, .7, .88].map(t => { const p = Bz(t), tg = BT(t), bn = [tg[1], -tg[0]]; return X(add2(p, mul2(bn, 4))); }), 1, C.seam);
+    { const p = Bz(.97), tg = BT(.97), bn = [tg[1], -tg[0]];                           // magas gallér
+      stroke([X(add2(p, mul2(bn, 10))), X(add2(add2(p, mul2(bn, 8)), mul2(tg, 9)))], S(9), C.jacket[1]);
+      stroke([X(add2(add2(p, mul2(bn, 12)), mul2(tg, 2))), X(add2(add2(p, mul2(bn, 10)), mul2(tg, 11)))], 1, C.seam); }
     // öv csattal
     { const p = Bz(.06), tg = BT(.06), bn = [tg[1], -tg[0]];
-      stroke([X(add2(p, mul2(bn, -13.5))), X(add2(p, mul2(bn, 13.5)))], S(6), C.belt);
-      px(X(add2(p, mul2(bn, -9))), C.buckle, 2, 2); }
+      stroke([X(add2(p, mul2(bn, -13.5))), X(add2(p, mul2(bn, 13.5)))], S(6), '#0B0912');
+      px(X(add2(p, mul2(bn, -9))), C.gold, 2, 2); }
     // fej: kopasz, borosta, kiberszem, halánték-implantátum
     const Hc = X(add2(T.head, mul2(up, 1.5))), R = S(15.5);
     const fcX = fc, upX = up;
@@ -411,12 +425,23 @@ const FIG = (() => {
     disc([Hc[0] + LV[0] * 0.9, Hc[1] + LV[1] * 0.9], R - 0.9, C.skin[1]);
     disc([Hc[0] + LV[0] * R * 0.45, Hc[1] + LV[1] * R * 0.45], Math.max(1, R * 0.28), C.skin[2]);
     const at = (f, uu) => [Hc[0] + fcX[0] * f * R + upX[0] * uu * R, Hc[1] + fcX[1] * f * R + upX[1] * uu * R];
-    fillPoly([at(0.15, -0.15), at(1.08, -0.15), at(0.95, -0.75), at(0.45, -1.02), at(0.0, -0.8)], C.beard);  // borosta, áll
-    fillPoly([at(0.78, -0.12), at(1.18, -0.05), at(1.1, -0.38), at(0.8, -0.38)], C.skin[1]);                 // orr/száj vonal
-    px(at(-0.1, 0.0), C.skin[0], 2, 2);                                                                      // fül
-    px(at(-0.35, 0.45), C.implant, 2, 1);                                                                    // implantátum
-    stroke([at(0.42, 0.42), at(0.98, 0.38)], 1, C.beard);                                                     // szemöldök
-    px(at(0.62, 0.2), C.eye, 2, 1); px(at(0.74, 0.2), C.eyeHi, 1, 1);                                        // kiberszem
+    // borotvált oldal (undercut) a fej hátsó-felső részén
+    fillPoly([at(-1.02, 0.1), at(-0.9, 0.62), at(-0.35, 0.98), at(0.3, 0.98), at(0.2, 0.55), at(-0.55, 0.15)], C.shaved);
+    // neon taraj: három tüske, hátrafelé söpörve
+    const sp = [[-0.55, 0.85, -1.15, 1.75], [-0.05, 0.98, -0.55, 2.05], [0.42, 0.9, 0.1, 1.95]];
+    sp.forEach(([f0, u0, f1, u1], i) => {
+      fillPoly([at(f0 - 0.28, u0 - 0.05), at(f1, u1), at(f0 + 0.3, u0 - 0.05)], C.hair[0]);
+      fillPoly([at(f0 - 0.08, u0), at(f1 + 0.08, u1 - 0.25), at(f0 + 0.22, u0)], C.hair[1]);
+      px(at(f1 + 0.05, u1 - 0.15), C.hair[2]);
+    });
+    fillPoly([at(0.15, -0.2), at(1.05, -0.2), at(0.92, -0.75), at(0.45, -1.0), at(0.0, -0.78)], C.beard);  // szakáll
+    fillPoly([at(0.78, -0.15), at(1.16, -0.08), at(1.08, -0.38), at(0.8, -0.38)], C.skin[1]);            // száj/orr
+    px(at(-0.1, 0.0), C.skin[0], 2, 2);                                                                    // fül
+    // világító vizor a szem vonalában + LED-pontok az arcon
+    stroke([at(0.3, 0.22), at(1.12, 0.2)], Math.max(2, S(4.5)), C.visor);
+    px(at(0.95, 0.24), C.visorHi, 1, 1);
+    px(at(0.55, -0.05), C.seam); px(at(0.45, -0.25), C.hot);
+    px(at(-0.45, 0.35), C.implant, 2, 1);
     // közeli végtagok
     leg('n', false); arm('n', false);
     T.props.filter(p => !p.far).forEach(prop);
