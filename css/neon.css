@@ -226,3 +226,21 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
 .rest-mode .fig canvas.sprite { filter: saturate(.55) brightness(.8); }
 @media (max-height: 640px) { .fig canvas.sprite { max-height: 28vh; } }
 .fig { background: radial-gradient(closest-side at 50% 58%, rgb(0 229 255 / .13), rgb(255 46 136 / .06) 60%, transparent 100%); }
+
+/* ---- 3D figura ---- */
+.fig { position: relative; }
+.fig canvas.fig3d { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+.rest-mode .fig canvas.fig3d { filter: saturate(.6) brightness(.8); }
+
+/* ---- Összecsukható kártyák ---- */
+details.card.fold, details.card.fold:first-of-type { padding: 0; gap: 0; border: 2px solid var(--line); }
+details.card.fold > summary { list-style: none; cursor: pointer; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--display); }
+details.card.fold > summary::-webkit-details-marker { display: none; }
+details.card.fold > summary h2 { font-size: 13px; margin: 0; }
+details.card.fold > summary::after { content: "+"; font-family: var(--display); font-size: 16px; color: var(--rest); flex: none; }
+details.card.fold[open] > summary::after { content: "−"; color: var(--accent); }
+details.card.fold > summary:focus-visible { outline: 2px dashed var(--rest); outline-offset: -4px; }
+.foldbody { display: grid; gap: 12px; padding: 0 16px 16px; }
+details.card.fold details { border-top: 1px dashed var(--line); }
+.music-btn { display: block; text-align: center; text-decoration: none; color: var(--text); border-color: #1DB954; box-shadow: 3px 3px 0 0 #000, 0 0 12px rgb(29 185 84 / .35); }
+.ptop a.listbtn { text-decoration: none; color: #1DB954; display: grid; place-items: center; min-width: 44px; }

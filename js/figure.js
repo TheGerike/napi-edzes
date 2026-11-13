@@ -487,6 +487,10 @@ const FIG = (() => {
 
   let fidSeq = 0;
   function render(svg, ex, u) {
+    if (typeof window !== 'undefined' && window.FIG3D && window.FIG3D.ok()) {
+      const bb3 = setup(ex);
+      if (window.FIG3D.draw(svg, ex, place(ex, poseAt(ex, u)), bb3)) return;
+    }
     if (typeof document !== 'undefined' && svg.ownerDocument && document.documentElement.dataset.fig !== 'vector') {
       spriteRender(canvasFor(svg), ex, u); return;
     }
@@ -518,7 +522,7 @@ const FIG = (() => {
     let lastStep = -1;
     const tick = now => {
       if (stopped) return;
-      const step = Math.floor(now / 83);              // ~12 kép/mp: retró sprite-ritmus
+      const step = (window.FIG3D && window.FIG3D.ok()) ? now : Math.floor(now / 83);   // 3D: minden képkocka; sprite: ~12 kép/mp
       if (step !== lastStep) { lastStep = step; render(svg, ex, ((((now - start) % dur) + dur) % dur) / dur); }
       raf = requestAnimationFrame(tick);
     };

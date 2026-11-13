@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '2.0.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true });
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
@@ -51,6 +51,13 @@ function levelProg() {
   const days = Math.max(0, Math.round((new Date(dayKey()) - new Date(ST.levelSince)) / DAY));
   return { good, days, ready: ST.level < 3 && good >= LEVEL_UP.good && days >= LEVEL_UP.days };
 }
+
+/* ================= ZENE, ÖSSZECSUKHATÓ KÁRTYÁK ================= */
+const DEFAULT_MUSIC = 'https://open.spotify.com/playlist/0kEq8LvNkrX7YANrI60Mcp';
+const musicUrl = () => (ST.set.music && /^https:\/\/open\.spotify\.com\//.test(ST.set.music)) ? ST.set.music : DEFAULT_MUSIC;
+const LS_FOLD = 'napiEdzes.fold';
+let folds = (() => { try { return JSON.parse(localStorage.getItem(LS_FOLD)) || {}; } catch (e) { return {}; } })();
+const foldOpen = k => folds[k] ? 'open' : '';
 
 /* ================= KEZDŐLAP ================= */
 let pick = null, pickPlus = null;   // pickPlus: null = ajánlott, 'none' = csak alap
@@ -110,6 +117,7 @@ function renderHome() {
       <span class="pill">${ST.level}. szint · ${LEVELS[ST.level].name}</span>
     </div>
     <button class="btn primary" id="go">Indítás · ~${minsTxt(tot)}</button>
+    <a class="btn music-btn" href="${esc(musicUrl())}" target="_blank" rel="noopener">♫ Zene indítása (Spotify)</a>
     <div class="chips two" role="group" aria-label="Alap változat">
       ${BASE_CYCLE.map(k => `<button class="chip${k === nt ? ' next' : ''}" data-pick="${k}" aria-pressed="${k === type}"><b>${k}</b><span>${esc(BASE[k].title.split(' · ')[1])}</span></button>`).join('')}
     </div>
@@ -151,24 +159,24 @@ function renderHome() {
     : '<p class="muted" style="margin:0">Ez a legfelső szint. Innen súlyemeléssel haladunk tovább: szólj, és összerakjuk a következő blokkot.</p>'}
   </section>
 
-  <section class="card">
-    <div class="row"><h2 style="font-size:22px">Az edzés tartalma</h2><span class="muted">Koppints, és onnan indul</span></div>
+<details class="card fold" data-fold="plan" ${foldOpen("plan")}><summary><h2>Az edzés tartalma</h2></summary><div class="foldbody">
+    <p class="muted" style="margin:0">Koppints egy gyakorlatra, és onnan indul.</p>
     <div class="plan">${plan}</div>
-  </section>
+  </div></details>
 
-  <section class="card">
-    <h2 style="font-size:22px">Beállítások</h2>
+<details class="card fold" data-fold="set" ${foldOpen("set")}><summary><h2>Beállítások</h2></summary><div class="foldbody">
     ${[['beep', 'Hangjelzés', 'Sípszó a váltásoknál és az utolsó 3 mp-ben. iPhone-on a némítókapcsoló elnémítja.'],
        ['voice', 'Felolvasás', 'Bemondja a következő gyakorlatot és az oldalcserét.' + (voiceMissing ? ' Ezen az eszközön nincs magyar hang.' : '')],
        ['auto', 'Automatikus továbblépés', 'Ha kikapcsolod, minden gyakorlat végén megáll, és te lépsz tovább.'],
        ['wake', 'Kijelző ébren tartása', 'Edzés közben nem alszik el a telefon.']]
       .map(([k, l, d]) => `<div class="set"><label for="set-${k}">${l}<small>${d}</small></label><input type="checkbox" class="switch" id="set-${k}" data-set="${k}" ${ST.set[k] ? 'checked' : ''}></div>`).join('')}
     <p class="muted" style="margin:0">Az adataid csak ezen a telefonon tárolódnak. Készíts rendszeresen mentést.</p>
+    <div class="set music"><label for="musicUrl">Zene: Spotify lejátszási lista<small>A „Zene” gomb ezt nyitja meg a Spotify appban. Bármelyik lista linkjét beillesztheted (Spotify: Megosztás → Link másolása).</small></label></div>
+    <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="musicUrl" class="bktext" style="min-height:0;height:44px;resize:none;flex:1" value="${esc(musicUrl())}" inputmode="url" autocomplete="off"><button class="btn small" id="musicSave">Mentés</button></div>
     <p class="muted version" style="margin:0">Verzió: ${APP_VERSION}</p>
-  </section>
+  </div></details>
 
-  <section class="card" id="backup">
-    <h2 style="font-size:22px">Mentés és visszaállítás</h2>
+<details class="card fold" id="backup" data-fold="backup" ${foldOpen("backup")}><summary><h2>Mentés és visszaállítás</h2></summary><div class="foldbody">
     <p class="muted" style="margin:0">A mentés tartalmazza a naplót, a szintet és a beállításokat. iPhone-on a fájl a Fájlok appba kerül. Új telefonon innen töltheted vissza.</p>
     <div class="bkbtns">
       <button class="btn small" id="bkExport">Mentés fájlba</button>
@@ -178,9 +186,9 @@ function renderHome() {
     </div>
     <input type="file" id="bkFile" class="visually-hidden" accept="application/json,.json" tabindex="-1" aria-hidden="true">
     <div id="bkMsg" aria-live="polite">${bkMsg ? `<div class="notice ${bkMsg.kind}">${esc(bkMsg.text)}</div>` : ''}</div>
-  </section>
+  </div></details>
 
-  <section class="card">
+<details class="card fold" data-fold="info" ${foldOpen("info")}><summary><h2>Tudnivalók</h2></summary><div class="foldbody">
     <details><summary>Hogyan működik?</summary>
       <ul>
         <li><b>Az alap a kötelező rész:</b> kb. 16 perc, eszköz nélkül, bárhol (otthon, szállodában, nyaralás alatt is): bemelegítés, alap kör, nyújtás. Az <b>A</b> (guggolás, nyomás, hát) és a <b>B</b> (kitörés, csípő, has) felváltva jön.</li>
@@ -215,15 +223,22 @@ function renderHome() {
         <li>Ha 2–3 egymás utáni reggel a nyugalmi pulzus 5+ ütéssel a szokásos fölött van, és a HRV is jóval alacsonyabb, csak az alapot csináld a Derék és mobilitás blokkal, és sétálj.</li>
         <li>Egyetlen alacsony HRV-érték önmagában nem jelent semmit, a több napos trend számít.</li>
       </ul></details>
-  </section>
+  </div></details>
 
-  <section class="card">
-    <h2 style="font-size:22px">Napló</h2>
+<details class="card fold" data-fold="log" ${foldOpen("log")}><summary><h2>Napló</h2></summary><div class="foldbody">
     <div class="log">${log}</div>
     <button class="btn small" id="reset" style="justify-self:start">Összes adat törlése</button>
-  </section>`;
+  </div></details>`;
 
   $('#go').onclick = () => start(type, 0, ST.level, plus);
+  document.querySelectorAll('details.fold').forEach(d => d.addEventListener('toggle', () => {
+    folds[d.dataset.fold] = d.open; try { localStorage.setItem(LS_FOLD, JSON.stringify(folds)); } catch (e) {}
+  }));
+  $('#musicSave').onclick = () => {
+    const v = $('#musicUrl').value.trim();
+    if (v && !/^https:\/\/open\.spotify\.com\//.test(v)) { $('#musicUrl').value = musicUrl(); sheet('<h2>Ez nem Spotify-link</h2><p class="muted">A link így kezdődjön: https://open.spotify.com/ (Spotify appban: Megosztás → Link másolása).</p><div class="btns"><button class="btn primary" id="shNo">Rendben</button></div>', { shNo: closeSheet }); return; }
+    ST.set.music = v.replace(/[?#].*$/, ''); save(); renderHome();
+  };
   document.querySelectorAll('[data-solo]').forEach(b => b.onclick = () => start('P', 0, ST.level, b.dataset.solo));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => askDelete(+b.dataset.del));
   document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { pick = b.dataset.pick === nt ? null : b.dataset.pick; renderHome(); });
@@ -475,6 +490,7 @@ function start(type, from = 0, level = ST.level, plus = null, vis = null) {
   p.innerHTML = `
   <div class="ptop"><button class="x" id="pExit" aria-label="Kilépés">✕</button>
     <div class="where"><b id="pSec"></b><div id="pWhere"></div></div>
+    <a class="btn small listbtn" href="${esc(musicUrl())}" target="_blank" rel="noopener" aria-label="Zene a Spotifyban">♫</a>
     <button class="btn small listbtn" id="pList">Lista</button></div>
   <div class="prog"><div id="pProg"></div></div>
   <div class="stage">
