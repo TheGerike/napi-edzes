@@ -169,7 +169,14 @@ const FIG = (() => {
   function render(svg, ex, u) {
     const bb = setup(ex);
     svg.setAttribute('viewBox', `${bb.x.toFixed(1)} ${bb.y.toFixed(1)} ${bb.w.toFixed(1)} ${bb.h.toFixed(1)}`);
-    svg.innerHTML = draw(ex, place(ex, poseAt(ex, u)));
+    // 8 bites hatás: SVG-szűrő mintavételez és kockákra nagyít (kb. 64 „pixel” széles kép)
+    const P = +(bb.w / 64).toFixed(2), x = bb.x.toFixed(1), y = bb.y.toFixed(1);
+    const pix = (typeof document !== 'undefined' && document.documentElement.dataset.pixel === 'off') ? '' :
+      `<defs><filter id="pxf" filterUnits="userSpaceOnUse" x="${x}" y="${y}" width="${bb.w.toFixed(1)}" height="${bb.h.toFixed(1)}">` +
+      `<feFlood x="${(+x + P / 2).toFixed(2)}" y="${(+y + P / 2).toFixed(2)}" width="1" height="1" flood-color="#fff"/>` +
+      `<feComposite x="${x}" y="${y}" width="${P}" height="${P}"/><feTile result="grid"/>` +
+      `<feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="${(P / 2).toFixed(2)}"/></filter></defs>`;
+    svg.innerHTML = pix ? pix + '<g filter="url(#pxf)">' + draw(ex, place(ex, poseAt(ex, u))) + '</g>' : draw(ex, place(ex, poseAt(ex, u)));
   }
 
   // A ctl pont a csípőhöz relatív: place() eltolja, ezért itt korrigálunk

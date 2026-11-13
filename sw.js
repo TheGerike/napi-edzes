@@ -1,5 +1,5 @@
 /* Napi edzés – service worker (offline cache). Relatív útvonalak: bármely almappából működik. */
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'napi-edzes-' + VERSION;
 
 const PRECACHE = [
@@ -8,6 +8,7 @@ const PRECACHE = [
   'manifest.webmanifest',
   'css/fonts.css',
   'css/style.css',
+  'css/neon.css',
   'js/figure.js',
   'js/data.js',
   'js/app.js',
@@ -16,16 +17,10 @@ const PRECACHE = [
   'icons/icon-512-maskable.png',
   'icons/apple-touch-icon.png',
   'icons/favicon-32.png',
-  'fonts/barlow-latin-400-normal.woff2',
-  'fonts/barlow-latin-500-normal.woff2',
-  'fonts/barlow-latin-600-normal.woff2',
-  'fonts/barlow-latin-ext-400-normal.woff2',
-  'fonts/barlow-latin-ext-500-normal.woff2',
-  'fonts/barlow-latin-ext-600-normal.woff2',
-  'fonts/barlow-condensed-latin-600-normal.woff2',
-  'fonts/barlow-condensed-latin-700-normal.woff2',
-  'fonts/barlow-condensed-latin-ext-600-normal.woff2',
-  'fonts/barlow-condensed-latin-ext-700-normal.woff2'
+  'fonts/press-start-2p-latin-400-normal.woff2',
+  'fonts/press-start-2p-latin-ext-400-normal.woff2',
+  'fonts/vt323-latin-400-normal.woff2',
+  'fonts/vt323-latin-ext-400-normal.woff2'
 ];
 
 // Az index.html teljes URL-je (a SW helyéhez viszonyítva).
