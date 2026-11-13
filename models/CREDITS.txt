@@ -1,0 +1,2 @@
+
+A 3D modell: Xbot (Mixamo, Adobe) a three.js példáiból (models/xbot.glb); a Three.js MIT licenc alatt (js/three-LICENSE.txt).
