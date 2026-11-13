@@ -139,7 +139,7 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
 .fg-near, .fg-far { stroke-linecap: square; stroke-linejoin: miter; }
 .fg-ground { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; opacity: .8; }
 .fg-box { fill: var(--surface2); stroke: var(--accent); }
-.rest-mode .fig svg { filter: drop-shadow(0 0 4px rgb(91 65 168 / .9)); }
+
 .rest-mode .fg-near { stroke: #B9A6FF; }
 .rest-mode .fg-head { fill: #B9A6FF; }
 
@@ -176,3 +176,26 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
 .set small, .log, .bksum, .notice { font-size: 18px; line-height: 1.15; }
 .chips.two .chip span { font-size: 17px; }
 .altlist .btn .muted { font-size: 17px; }
+
+/* ---- Neon ronin karakter ---- */
+.cy-armor, .cy-line, .cy-torso, .cy-chest, .cy-belt, .cy-visor, .cy-crest, .cy-scab, .cy-blade, .cy-hilt, .cy-guard { fill: none; stroke-linecap: square; stroke-linejoin: miter; }
+.cy-armor { stroke: #2E2058; stroke-width: 12; }
+.cy-armor.arm { stroke-width: 10; }
+.cy-armor.far { stroke: #1A1133; stroke-width: 10; }
+.cy-line { stroke: var(--rest); stroke-width: 3.5; }
+.cy-line.far { stroke: #3C6E9E; stroke-width: 3; }
+.cy-torso { stroke: #2E2058; stroke-width: 22; }
+.cy-chest { stroke: var(--accent); stroke-width: 3.5; }
+.cy-belt { stroke: var(--metal); stroke-width: 5; }
+.cy-helm { fill: #2E2058; stroke: var(--rest); stroke-width: 3; }
+.cy-visor { stroke: #E9FEFF; stroke-width: 5; }
+.cy-crest { stroke: var(--metal); stroke-width: 3.5; }
+.cy-scab { stroke: #3A1030; stroke-width: 7; }
+.cy-blade { stroke: var(--accent); stroke-width: 3.2; }
+.cy-hilt { stroke: var(--metal); stroke-width: 5; }
+.cy-guard { stroke: var(--metal); stroke-width: 3.5; }
+.cy-pauldron { fill: #4A1240; stroke: var(--accent); stroke-width: 3; }
+.cy-joint { fill: var(--accent); }
+.cy-fist { fill: #E9FEFF; } .cy-fist.far { fill: #3C6E9E; }
+.fig svg { filter: drop-shadow(0 0 3px rgb(0 229 255 / .7)) drop-shadow(0 0 10px rgb(255 46 136 / .35)); }
+.rest-mode .fig svg { filter: saturate(.55) brightness(.85) drop-shadow(0 0 4px rgb(91 65 168 / .8)); }
