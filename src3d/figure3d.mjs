@@ -84,7 +84,7 @@ function buildProps() {
 /* ---------- modell betöltése és stilizálása ---------- */
 function loadModel() {
   if (loading || model) return; loading = true;
-  new GLTFLoader().load(MODEL_URL, g => {
+  const onLoad = g => {
     model = g.scene;
     const armor = new THREE.MeshStandardMaterial({ color: 0x7c7aa6, roughness: .22, metalness: .92 });
     const joints = new THREE.MeshStandardMaterial({ color: 0x15121f, emissive: 0x00c8e0, emissiveIntensity: .12, roughness: .4, metalness: .5 });
@@ -114,7 +114,15 @@ function loadModel() {
       vis.scale.setScalar(k); vis.position.set(0, .075 * k, .075 * k); head.add(vis);
     }
     loading = false;
-  }, undefined, () => { loading = false; failed = true; });
+  };
+  const onErr = () => { loading = false; failed = true; };
+  if (window.MODEL_B64) {   // beágyazott modell (pl. ahol .glb fájl nem szolgálható ki)
+    try {
+      const bin = atob(window.MODEL_B64), buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      new GLTFLoader().parse(buf.buffer, '', onLoad, onErr);
+    } catch (e) { onErr(); }
+  } else new GLTFLoader().load(MODEL_URL, onLoad, undefined, onErr);
 }
 
 /* ---------- csontforgatás (retargeting) ---------- */
