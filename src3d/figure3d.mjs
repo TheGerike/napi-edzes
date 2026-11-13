@@ -102,7 +102,7 @@ const CHARS = {
   shade: { file: 'models/shade.glb', rig: 'mixamo' }
 };
 const MODEL_DIR = (() => { const u = document.currentScript && document.currentScript.dataset.model; return u ? u.replace(/[^/]*$/, '') : 'models/'; })();
-let charId = 'neon', holder = null, loadSeq = 0;
+let charId = 'neon', holder = null, loadSeq = 0, lastMocap = null, mocapChar = null;
 const norm = n => n.toLowerCase().replace(/^mixamorig:?/, '').replace(/_\d+$/, '').replace(/[\s_]+/g, '_');
 
 function stylizeAndroid(root) {
@@ -225,6 +225,82 @@ function aim(boneName, childName, dir, viaDown) {
 }
 const dirOf = (a, b) => new THREE.Vector3((b[0] - a[0]) * S, -(b[1] - a[1]) * S, 0).normalize();
 
+/* ---------- mozgásrögzítés (Mixamo, valódi emberről) ---------- */
+// Ezeknél a gyakorlatoknál a 2D vázlat helyett rögzített mozgás vezérli a csontokat.
+// A klip csontjainak világ-irányait visszük át a karakterre, így bármelyik csontvázzal működik.
+const MOCAP = {
+  guggolas: { clip: 'squat' }, guggolas_tempo: { clip: 'squat' },
+  fekvo: { clip: 'pushup' }, fekvo_lassu: { clip: 'pushup' },
+  burpee: { clip: 'burpee' }, arnyekbox: { clip: 'jab', natural: true }
+};
+const motions = {};   // név → { root, mixer, dur, j: {kulcs: csont} } | 'loading' | 'fail'
+const MJ = { Hips: 'hips', Spine: 'spine', Spine1: 'spine1', Spine2: 'spine2', Neck: 'neck', Head: 'head',
+  RUpLeg: 'rightupleg', RLeg: 'rightleg', RFoot: 'rightfoot', RToe: 'righttoebase', RArm: 'rightarm', RFore: 'rightforearm', RHand: 'righthand',
+  LUpLeg: 'leftupleg', LLeg: 'leftleg', LFoot: 'leftfoot', LToe: 'lefttoebase', LArm: 'leftarm', LFore: 'leftforearm', LHand: 'lefthand' };
+function loadMotion(name) {
+  if (motions[name]) return;
+  motions[name] = 'loading';
+  const loader = new GLTFLoader();
+  const done = g => {
+    const root = g.scene, j = {}, by = {};
+    root.traverse(o => { const k = norm(o.name || ''); if (k && !by[k]) by[k] = o; });
+    Object.entries(MJ).forEach(([k, v]) => { if (by[v]) j[k] = by[v]; });
+    const clip = g.animations[0];
+    if (!clip || !j.Hips) { motions[name] = 'fail'; return; }
+    const mixer = new THREE.AnimationMixer(root); mixer.clipAction(clip).play();
+    // referencia: lábhossz és a talpak helye a klip elején (a vízszintes elmozdulás arányos átviteléhez)
+    mixer.setTime(0); root.updateMatrixWorld(true);
+    const P = k => j[k].getWorldPosition(new THREE.Vector3());
+    const legM = P('RUpLeg').distanceTo(P('RLeg')) + P('RLeg').distanceTo(P('RFoot'));
+    let hz = 0; for (let i = 0; i < 16; i++) { mixer.setTime(i / 16 * clip.duration); root.updateMatrixWorld(true); hz += P('Hips').z / 16; }
+    motions[name] = { root, mixer, dur: clip.duration, j, legM, f0x: hz };   // a csípő átlagos helye = középpont
+  };
+  const fail = () => { motions[name] = 'fail'; };
+  const emb = window.MOTIONS_B64;
+  if (emb && emb[name]) {
+    try { const bin = atob(emb[name]), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); loader.parse(buf.buffer, '', done, fail); } catch (e) { fail(); }
+  } else loader.load(MODEL_DIR + 'motions/' + name + '.glb', done, undefined, fail);
+}
+const mv = new THREE.Vector3(), mv2 = new THREE.Vector3();
+function mdir(m, a, b) {                     // klip-irány a → b, a mi tájolásunkra forgatva (arc +X, jobb oldal +Z)
+  const A = m.j[a], B = m.j[b]; if (!A || !B) return null;
+  A.getWorldPosition(mv); B.getWorldPosition(mv2); mv2.sub(mv);
+  if (mv2.lengthSq() < 1e-10) return null;
+  return new THREE.Vector3(mv2.z, mv2.y, -mv2.x).normalize();
+}
+function poseMocap(m, t, T) {
+  m.mixer.setTime(t % m.dur); m.root.updateMatrixWorld(true);
+  rest.forEach((q, b) => b.quaternion.copy(q));
+  model.position.set(0, 0, 0); model.updateMatrixWorld(true);
+  aim('Hips', 'Spine1', mdir(m, 'Hips', 'Spine1'));
+  aim('Spine', 'Spine1', mdir(m, 'Spine', 'Spine1'));
+  aim('Spine1', 'Spine2', mdir(m, 'Spine1', 'Spine2'));
+  aim('Spine2', 'Neck', mdir(m, 'Spine2', 'Neck'));
+  ['R', 'L'].forEach(s => {
+    aim(s + 'UpLeg', s + 'Leg', mdir(m, s + 'UpLeg', s + 'Leg'));
+    aim(s + 'Leg', s + 'Foot', mdir(m, s + 'Leg', s + 'Foot'));
+    aim(s + 'Foot', s + 'Toe', mdir(m, s + 'Foot', s + 'Toe'));
+    aim(s + 'Arm', s + 'Fore', mdir(m, s + 'Arm', s + 'Fore'), true);
+    aim(s + 'Fore', s + 'Hand', mdir(m, s + 'Fore', s + 'Hand'));
+  });
+  // függőleges: talajra; vízszintes: a klip csípőmozgását arányosan követjük (kezdő talphely = 0)
+  ground(T);
+  const hm = m.j.Hips.getWorldPosition(mv), tx = (hm.z - m.f0x) * (.92 / m.legM);
+  model.updateMatrixWorld(true);
+  model.position.x += tx - bones.Hips.getWorldPosition(v1).x; model.updateMatrixWorld(true);
+}
+// a mozgás teljes befoglaló doboza (kamera-keretezéshez), 2D egységben, mint FIG.bounds()
+function mocapBounds(m) {
+  let x0 = 1e9, x1 = -1e9, y1 = 0;
+  for (let i = 0; i < 24; i++) {
+    poseMocap(m, i / 24 * m.dur, { an: [0, 0], __anch: 'an' });
+    Object.values(bones).forEach(b => { const p = b.getWorldPosition(v1); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); });
+  }
+  x0 = x0 / S - 30; x1 = x1 / S + 30;
+  const W = Math.max(210, x1 - x0 + 30), H = Math.max(170, y1 / S + 50), cx = (x0 + x1) / 2;
+  return { x: cx - W / 2, y: -H + 14, w: W, h: H };
+}
+
 function pose(T) {
   rest.forEach((q, b) => b.quaternion.copy(q));
   model.position.set(0, 0, 0); model.updateMatrixWorld(true);
@@ -250,6 +326,11 @@ function pose(T) {
     aim(s + 'Arm', s + 'Fore', dirOf(T.sho, T['e' + k]), true);
     aim(s + 'Fore', s + 'Hand', dirOf(T['e' + k], T['w' + k]));
   });
+  model.updateMatrixWorld(true);
+  ground(T);
+}
+
+function ground(T) {
   model.updateMatrixWorld(true);
   // talajra ejtés: a legalacsonyabb pont (testvastagsággal) érintse a padlót
   const pad = { Hips: .12, Spine: .12, Spine1: .12, Spine2: .13, Head: .12, HeadEnd: .02, Neck: .07,
@@ -302,14 +383,21 @@ function frameCamera(bb) {
   camDist = Math.max((h * .44) / Math.tan(vf), (w * .42) / (Math.tan(vf) * camera.aspect)) + .2;
 }
 
-function draw(el, ex, T, bb) {
+function draw(el, ex, T, bb, u) {
   if (failed) return false;
   if (!renderer && !initScene()) return false;
   if (!attach(el)) return false;
-  if (lastEx !== ex) { frameCamera(bb); lastEx = ex; }
+  if (lastEx !== ex) { frameCamera(bb); lastEx = ex; lastMocap = null; }
   if (model) {
     T.__anch = ex.anch || 'an';
-    pose(T); placeProps(ex);
+    const mc = ex.__id !== undefined ? MOCAP[ex.__id] : null;
+    let m = null;
+    if (mc) { if (!motions[mc.clip]) loadMotion(mc.clip); if (typeof motions[mc.clip] === 'object') m = motions[mc.clip]; }
+    if (m) {
+      if (lastMocap !== ex || mocapChar !== model) { frameCamera(mocapBounds(m)); lastMocap = ex; mocapChar = model; }
+      poseMocap(m, mc.natural || u == null ? performance.now() / 1000 : u * m.dur, T);
+    } else { if (lastMocap === ex) { frameCamera(bb); lastMocap = null; } pose(T); }
+    placeProps(ex);
     if (ex.box) { const bw = ex._boxW * S, bh = (0 - ex._boxTop) * S; props.box.scale.set(bw, bh, 1); props.box.position.set((ex._boxX + ex._boxW / 2) * S, bh / 2, -.1); props.box.visible = true; }
     else props.box.visible = false;
   }

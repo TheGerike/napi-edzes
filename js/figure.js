@@ -489,7 +489,7 @@ const FIG = (() => {
   function render(svg, ex, u) {
     if (typeof window !== 'undefined' && window.FIG3D && window.FIG3D.ok()) {
       const bb3 = setup(ex);
-      if (window.FIG3D.draw(svg, ex, place(ex, poseAt(ex, u)), bb3)) return;
+      if (window.FIG3D.draw(svg, ex, place(ex, poseAt(ex, u)), bb3, u)) return;
     }
     if (typeof document !== 'undefined' && svg.ownerDocument && document.documentElement.dataset.fig !== 'vector') {
       spriteRender(canvasFor(svg), ex, u); return;

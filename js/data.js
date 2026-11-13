@@ -505,3 +505,4 @@ function buildPlusOnly(plus, level) {
   return steps;
 }
 const totalSec = steps => steps.reduce((a, s) => a + s.dur, 0);
+Object.keys(EX).forEach(k => { EX[k].__id = k; });   // azonosító a 3D mozgásrögzítéshez
