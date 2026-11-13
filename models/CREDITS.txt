@@ -1,8 +1,13 @@
-neon.glb  – "Character Cyberpunk FREE 3d By Oscar Creativo" (https://sketchfab.com/3d-models/character-cyberpunk-free-3d-by-oscar-creativo-45469e72f0e04bd5bfbca71696dda0aa)
 Three.js: MIT licenc (js/three-LICENSE.txt).
-            by OSCAR CREATIVO (https://sketchfab.com/oscar_creativo), licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/).
-            Changes: weapons, morph targets and animation removed; mesh simplified; textures resized to 512 px WebP; meshopt compression.
-ronin.glb – "Cyberpunk character" (https://sketchfab.com/3d-models/cyberpunk-character-019f4b3fd3c74ed0bc6c8dbe9cd50d51)
-            by 4d_Bob (https://sketchfab.com/3d_Bob), licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
-            Changes: animation removed; textures WebP; meshopt compression.
-xbot.glb  – Xbot, Mixamo (Adobe), from the three.js examples (https://github.com/mrdoob/three.js).
+neon.glb   – "Character Cyberpunk FREE 3d By Oscar Creativo" (https://sketchfab.com/3d-models/character-cyberpunk-free-3d-by-oscar-creativo-45469e72f0e04bd5bfbca71696dda0aa)
+             by OSCAR CREATIVO (https://sketchfab.com/oscar_creativo), CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/).
+             Changes: weapons, morph targets and animation removed; mesh simplified; textures 512 px WebP; meshopt compression.
+ronin.glb  – "Cyberpunk character" (https://sketchfab.com/3d-models/cyberpunk-character-019f4b3fd3c74ed0bc6c8dbe9cd50d51)
+             by 4d_Bob (https://sketchfab.com/3d_Bob), CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+             Changes: animation removed; textures WebP; meshopt compression.
+shade.glb  – "10000 Followers! Milestone - Shade of Neo-Tokyo" (https://sketchfab.com/3d-models/10000-followers-milestone-shade-of-neo-tokyo-ce65f2fd429d40de9dac4eb60760dd90)
+             by Moon dong hwa (https://sketchfab.com/moondonghwa), CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+             Changes: text bubble and props removed; animations removed; mesh simplified; textures 512 px WebP; meshopt compression.
+katana.glb – "Cyborg with Thermal Katana" (https://sketchfab.com/3d-models/cyborg-with-thermal-katana-f8e8fb734bac4b5f83f8d3d6ba78797c)
+             by SpatialNeglect (https://sketchfab.com/jeandiz), Sketchfab Free Standard license.
+             Changes: pistol removed; katana moved to the back; mesh simplified; textures 512 px WebP; meshopt compression.

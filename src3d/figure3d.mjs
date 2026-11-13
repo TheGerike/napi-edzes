@@ -98,7 +98,8 @@ const RIGS = {
 const CHARS = {
   neon: { file: 'models/neon.glb', rig: 'cc' },
   ronin: { file: 'models/ronin.glb', rig: 'simple' },
-  android: { file: 'models/xbot.glb', rig: 'mixamo', style: 'android' }
+  katana: { file: 'models/katana.glb', rig: 'mixamo', back: /katana/i },
+  shade: { file: 'models/shade.glb', rig: 'mixamo' }
 };
 const MODEL_DIR = (() => { const u = document.currentScript && document.currentScript.dataset.model; return u ? u.replace(/[^/]*$/, '') : 'models/'; })();
 let charId = 'neon', holder = null, loadSeq = 0;
@@ -126,6 +127,26 @@ function tuneMaterials(root) {
   });
 }
 
+// a kézben lógó kardot a hátára tesszük (átlósan, szamurájosan), a felsőtest csontjához kötve
+function swordOnBack(sc, re) {
+  let node = null; sc.traverse(o => { if (!node && re.test(o.name || '')) node = o; });
+  const sp = bones.Spine2 || bones.Spine1; if (!node || !sp) return;
+  const meshes = []; node.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach(m => {
+    m.geometry.computeBoundingBox(); const bb = m.geometry.boundingBox, sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
+    const ax = sz.x >= sz.y && sz.x >= sz.z ? new THREE.Vector3(1, 0, 0) : sz.y >= sz.z ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+    const len = Math.max(sz.x, sz.y, sz.z), k = .95 / len;
+    const D = new THREE.Vector3(-.12, .8, .58).normalize();                     // bal csípőtől a jobb váll fölé (a markolat látszik)
+    const q = new THREE.Quaternion().setFromUnitVectors(ax, D);
+    const P = sp.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(-.2, -.02, 0));  // a hát mögött
+    m.parent.remove(m); scene.add(m);
+    m.scale.setScalar(k); m.quaternion.copy(q); m.position.copy(P).sub(c.clone().multiplyScalar(k).applyQuaternion(q));
+    m.updateMatrixWorld(true); sp.attach(m);
+    const ms = Array.isArray(m.material) ? m.material : [m.material];
+    ms.forEach(mt => { if (mt.emissive) { mt.emissive.set(0xff2040); mt.emissiveIntensity = 2.2; mt.toneMapped = false; } });
+  });
+}
+
 function setupModel(gltf, cfg, seq) {
   if (seq !== loadSeq) return;
   const sc = gltf.scene;
@@ -148,6 +169,7 @@ function setupModel(gltf, cfg, seq) {
   const raw = p('RUpLeg').distanceTo(p('RLeg')) + p('RLeg').distanceTo(p('RFoot'));
   holder.scale.setScalar(.92 / raw); holder.updateMatrixWorld(true);
   if (cfg.style === 'android') stylizeAndroid(sc); else tuneMaterials(sc);
+  if (cfg.back) swordOnBack(sc, cfg.back);
   model = holder; loading = false; lastPose = null;
 }
 
@@ -165,7 +187,7 @@ function loadModel() {
   const cfg = CHARS[charId] || CHARS.neon, seq = ++loadSeq;
   loading = true; failed = false;
   const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
-  const onErr = () => { if (seq !== loadSeq) return; loading = false; if (charId !== 'android') { charId = 'android'; loadModel(); } else failed = true; };
+  const onErr = () => { if (seq !== loadSeq) return; loading = false; if (charId !== 'neon') { charId = 'neon'; loadModel(); } else failed = true; };
   const parseB64 = b64 => { try { const bin = atob(b64), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
     loader.parse(buf.buffer, '', g => setupModel(g, cfg, seq), onErr); } catch (e) { onErr(); } };
   const emb = window.MODELS_B64;

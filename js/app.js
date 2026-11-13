@@ -11,13 +11,13 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.3.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon' });
-const CHARS = [['neon', 'Neon', 'kiberpunk lány'], ['ronin', 'Ronin', 'kiborg műkarral'], ['android', 'Android', 'krómrobot']];
+const CHARS = [['neon', 'Neon', 'kiberpunk lány'], ['shade', 'Shade', 'szamurájsisakos'], ['katana', 'Katana', 'kiborg, kard a hátán'], ['ronin', 'Ronin', 'kiborg műkarral']];
 const setChar3d = () => { try { window.FIG3D && FIG3D.setChar && FIG3D.setChar(ST.set.char || 'neon'); } catch (e) {} };
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
-const norm = r => Object.assign(def(), r, { set: Object.assign(defSet(), r.set || {}), log: Array.isArray(r.log) ? r.log : [],
+const norm = r => Object.assign(def(), r, { set: Object.assign(defSet(), r.set || {}, (r.set && r.set.char === 'android') ? { char: 'neon' } : {}), log: Array.isArray(r.log) ? r.log : [],
   plusPtr: Number.isInteger(r.plusPtr) && r.plusPtr >= 0 ? r.plusPtr : 0 });
 let ST = (() => { try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.v === 1) return norm(r); } catch (e) {} return def(); })();
 setChar3d();
@@ -174,7 +174,7 @@ function renderHome() {
        ['wake', 'Kijelző ébren tartása', 'Edzés közben nem alszik el a telefon.']]
       .map(([k, l, d]) => `<div class="set"><label for="set-${k}">${l}<small>${d}</small></label><input type="checkbox" class="switch" id="set-${k}" data-set="${k}" ${ST.set[k] ? 'checked' : ''}></div>`).join('')}
     <div class="set"><label>Edző karakter<small>Ő mutatja a gyakorlatokat.</small></label></div>
-    <div class="chips three" role="group" aria-label="Edző karakter">
+    <div class="chips two" role="group" aria-label="Edző karakter">
       ${CHARS.map(([k, n, d]) => `<button class="chip" data-char="${k}" aria-pressed="${(ST.set.char || 'neon') === k}"><b>${n}</b><span>${d}</span></button>`).join('')}
     </div>
     <p class="muted" style="margin:0">Az adataid csak ezen a telefonon tárolódnak. Készíts rendszeresen mentést.</p>
@@ -200,7 +200,8 @@ function renderHome() {
       <ul>
         <li><b>Neon:</b> „Character Cyberpunk FREE 3d”, készítette OSCAR CREATIVO (sketchfab.com/oscar_creativo), CC BY-NC 4.0 licenc. Átalakítva: fegyverek nélkül, telefonra optimalizálva.</li>
         <li><b>Ronin:</b> „Cyberpunk character”, készítette 4d_Bob (sketchfab.com/3d_Bob), CC BY 4.0 licenc. Telefonra optimalizálva.</li>
-        <li><b>Android:</b> Xbot (Mixamo / Adobe, a three.js példáiból).</li>
+        <li><b>Shade:</b> „Shade of Neo-Tokyo”, készítette Moon dong hwa (sketchfab.com/moondonghwa), CC BY 4.0 licenc. Felirat nélkül, telefonra optimalizálva.</li>
+        <li><b>Katana:</b> „Cyborg with Thermal Katana”, készítette SpatialNeglect (sketchfab.com/jeandiz), Sketchfab Free Standard licenc. Pisztoly nélkül, a kard a hátára került.</li>
       </ul></details>
     <details><summary>Hogyan működik?</summary>
       <ul>
