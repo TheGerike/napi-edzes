@@ -135,7 +135,7 @@ const EX = {
     name: 'Halott bogár', dur: 3, anch: 'hip', hold: 0.2,
     frames: [
       { t: -90, hd: -90, l: [[178, 90], [182, 92]], a: [[178, 178], [182, 182]] },
-      { t: -90, hd: -90, l: [[102, 96], [182, 92]], a: [[-102, -102], [182, 182]] }
+      { t: -90, hd: -90, l: [[102, 96], [182, 92]], a: [[258, 258], [182, 182]] }
     ],
     cues: ['Hanyatt, derék a talajhoz nyomva', 'Ellentétes kart és lábat nyújts lassan', 'Kilégzés nyújtáskor, váltott oldal'],
     easy: 'Csak a lábat mozgasd'
