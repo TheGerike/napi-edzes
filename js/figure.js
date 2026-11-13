@@ -95,7 +95,9 @@ const FIG = (() => {
     if (ex.mode === 'loop') {
       u = Math.min(Math.max(u, 0), 0.99999);
       const seg = u * F.length, i = Math.floor(seg) % F.length, w = seg - Math.floor(seg);
-      const nxt = F[(i + 1) % F.length];
+      let nxt = F[(i + 1) % F.length];
+      // forgó mozgás (pl. karkörzés): az utolsó→első szakaszon +360°-kal folytatjuk, hogy ne forduljon vissza
+      if (ex.spin && i === F.length - 1) nxt = Object.assign({}, nxt, { a: nxt.a.map(([x, y]) => [x + 360, y + 360]) });
       return lerpPose(F[i], nxt, ex.linear ? w : (1 - Math.cos(w * Math.PI)) / 2);
     }
     // pingpong, végpontokon kis tartással
@@ -292,8 +294,177 @@ const FIG = (() => {
     return ex._bb;
   }
 
+  // ================= PIXEL ART SPRITE: „utcai kiberharcos” =================
+  // Kis felbontású vásznon rajzol (1 px = 1 sprite-pixel), majd palettára kvantál,
+  // sötét kontúrt húz, és a CSS kockásan nagyítja fel (image-rendering: pixelated).
+  const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const dim = (h, f) => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * f).toString(16).padStart(2, '0')).join(''); };
+  const C = {
+    skin: ['#9A5E48', '#C98B6B', '#E8B092'],
+    top: ['#15121C', '#262233', '#433D5A'],
+    pants: ['#2F341E', '#495033', '#6B7450'],
+    boot: ['#0C0B12', '#1E1D28', '#3A3A4A'],
+    glove: ['#0C0B12', '#1E1D28', '#3A3A4A'],
+    belt: '#5A3A20', buckle: '#C8D0DA', beard: '#3A2A2A', tattoo: '#1F7F94',
+    eye: '#00E5FF', eyeHi: '#E9FEFF', implant: '#8A97A6', logo: '#FF2E88',
+    iron: ['#1C2028', '#323946', '#6B7686'], ground: '#3B2770', shadow: '#05020C', box: '#2A1F4A'
+  };
+  const FAR = 0.62;
+  const farOf = a => Array.isArray(a) ? a.map(h => dim(h, FAR)) : dim(a, FAR);
+  const OUTLINE = '#0E0A16';
+  const PALETTE = (() => {
+    const out = new Set([OUTLINE]);
+    const addc = v => { if (Array.isArray(v)) v.forEach(addc); else out.add(v); };
+    Object.values(C).forEach(v => { addc(v); addc(farOf(v)); });
+    return [...out].map(hex);
+  })();
+  const SK = 0.36;                                   // sprite-pixel / egység
+  const LV = norm2([-0.5, -0.85]);
+  function norm2(p) { const l = Math.hypot(p[0], p[1]) || 1; return [p[0] / l, p[1] / l]; }
+
+  function spriteRender(cv, ex, u) {
+    const bb = setup(ex);
+    const W = Math.ceil(bb.w * SK), H = Math.ceil(bb.h * SK);
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const c = cv.getContext('2d', { willReadFrequently: true });
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(0, 0, W, H);
+    const T = place(ex, poseAt(ex, u));
+    const X = p => [(p[0] - bb.x) * SK, (p[1] - bb.y) * SK];
+    const S = v => v * SK;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const stroke = (pts, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke(); };
+    const fillPoly = (pts, col) => { c.fillStyle = col; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fill(); };
+    const disc = (p, r, col) => { c.fillStyle = col; c.beginPath(); c.arc(p[0], p[1], r, 0, Math.PI * 2); c.fill(); };
+    const px = (p, col, w = 1, h = 1) => { c.fillStyle = col; c.fillRect(Math.round(p[0] - w / 2), Math.round(p[1] - h / 2), w, h); };
+    // 3 tónusú „henger”: árnyék, alap a fény felé tolva, keskeny csúcsfény
+    const limb = (a, b, w, col) => {
+      const A = X(a), B = X(b), dir = norm2([B[0] - A[0], B[1] - A[1]]), nn = [-dir[1], dir[0]];
+      const sd = (nn[0] * LV[0] + nn[1] * LV[1]) >= 0 ? 1 : -1, o = (k) => [nn[0] * sd * k, nn[1] * sd * k];
+      stroke([A, B], w, col[0]);
+      const o1 = o(w * 0.14); stroke([[A[0] + o1[0], A[1] + o1[1]], [B[0] + o1[0], B[1] + o1[1]]], w * 0.62, col[1]);
+      const o2 = o(w * 0.3); stroke([[A[0] + o2[0], A[1] + o2[1]], [B[0] + o2[0], B[1] + o2[1]]], Math.max(1, w * 0.2), col[2]);
+    };
+    const sub2 = (p, q) => [p[0] - q[0], p[1] - q[1]], add2 = (p, q) => [p[0] + q[0], p[1] + q[1]], mul2 = (p, k) => [p[0] * k, p[1] * k];
+    const d = norm2(sub2(T.neck, T.hip)), back = [d[1], -d[0]], front = mul2(back, -1);
+    const up = norm2(sub2(T.head, T.neck));
+    let fc = [-up[1], up[0]]; if (fc[0] * front[0] + fc[1] * front[1] < 0) fc = mul2(fc, -1);
+
+    const leg = (k, far) => {
+      const P = far ? farOf(C.pants) : C.pants, Bt = far ? farOf(C.boot) : C.boot;
+      const Hp = T.hip, K = T['k' + k], A = T['a' + k], Tt = T['t' + k];
+      limb(Hp, K, S(19), P); limb(K, A, S(15), P);
+      const sd = norm2(sub2(A, K));
+      limb(add2(A, mul2(sd, -11)), A, S(15), Bt);                 // bakancsszár
+      limb(add2(A, mul2(norm2(sub2(Tt, A)), -3)), add2(Tt, mul2(norm2(sub2(Tt, A)), 3)), S(11), Bt);   // lábfej
+      if (!far) { const kp = X(K); px([kp[0], kp[1]], P[2], 2, 1); }   // térdfolt fény
+    };
+    const arm = (k, far) => {
+      const Sk = far ? farOf(C.skin) : C.skin, G = far ? farOf(C.glove) : C.glove;
+      const Sh = T.sho, E = T['e' + k], Wr = T['w' + k];
+      limb(Sh, E, S(16), Sk); limb(E, Wr, S(12.5), Sk);
+      const wd = norm2(sub2(Wr, E));
+      limb(add2(Wr, mul2(wd, -4)), add2(Wr, mul2(wd, 3)), S(12), G);   // ujjatlan kesztyű
+      // tetoválás a felkaron
+      const a = X(add2(Sh, mul2(norm2(sub2(E, Sh)), 9))), b = X(add2(Sh, mul2(norm2(sub2(E, Sh)), 24)));
+      stroke([a, b], 1, far ? farOf(C.tattoo) : C.tattoo);
+    };
+    const prop = pp => {
+      const [x, y] = X(pp.at), iron = pp.far ? farOf(C.iron) : C.iron;
+      if (pp.k === 'kb') {
+        c.strokeStyle = iron[1]; c.lineWidth = S(4.5); c.beginPath(); c.arc(x, y + S(6), S(7), Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+        disc([x, y + S(14)], S(10), iron[0]); disc([x - S(1.2), y + S(13)], S(8), iron[1]); px([x - S(4), y + S(10)], iron[2], 2, 2);
+      } else {
+        c.fillStyle = iron[0]; c.fillRect(x - S(9), y - S(2.5), S(18), S(5));
+        c.fillStyle = iron[1]; c.fillRect(x - S(10), y - S(7), S(5), S(14)); c.fillRect(x + S(5), y - S(7), S(5), S(14));
+        px([x - S(8), y - S(5)], iron[2]); px([x + S(7), y - S(5)], iron[2]);
+      }
+    };
+    // távoli végtagok
+    leg('f', true); arm('f', true);
+    T.props.filter(p => p.far).forEach(prop);
+    // törzs: atléta (a gerincív mentén)
+    const Bz = t => { const a = (1 - t) * (1 - t), b2 = 2 * (1 - t) * t, cc = t * t;
+      return [a * T.hip[0] + b2 * T.ctl[0] + cc * T.neck[0], a * T.hip[1] + b2 * T.ctl[1] + cc * T.neck[1]]; };
+    const BT = t => norm2([2 * (1 - t) * (T.ctl[0] - T.hip[0]) + 2 * t * (T.neck[0] - T.ctl[0]), 2 * (1 - t) * (T.ctl[1] - T.hip[1]) + 2 * t * (T.neck[1] - T.ctl[1])]);
+    const prof = [[0, 13, 13], [.3, 12, 11.5], [.55, 14.5, 12.5], [.78, 16.5, 14], [.9, 15, 13]];
+    const fr = [], bk = [];
+    prof.forEach(([t, wf, wb]) => { const p = Bz(t), tg = BT(t), bn = [tg[1], -tg[0]]; fr.push(X(add2(p, mul2(bn, -wf)))); bk.push(X(add2(p, mul2(bn, wb)))); });
+    // nyak + váll (bőr) az atléta mögött
+    limb(Bz(.82), T.neck, S(13), C.skin);
+    limb(add2(T.sho, mul2(back, 6)), add2(T.sho, mul2(front, 7)), S(11), C.skin);
+    // vállsapkák (deltaizom) a karok tövénél
+    limb(add2(T.sho, mul2(d, -3)), add2(T.sho, mul2(d, 2)), S(17), C.skin);
+    fillPoly(fr.concat([...bk].reverse()), C.top[1]);
+    const awayFront = (back[0] * LV[0] + back[1] * LV[1]) > 0;            // a mellkas oldala van árnyékban?
+    stroke(awayFront ? fr : bk, Math.max(1.5, S(5)), C.top[0]);
+    stroke(awayFront ? bk.slice(1) : fr.slice(1), 1, C.top[2]);
+    { const p = X(Bz(.7)), tg = BT(.7), bn = [tg[1], -tg[0]]; const q = X(add2(Bz(.7), mul2(bn, -7))); px(q, C.logo, 2, 2); }
+    // öv csattal
+    { const p = Bz(.06), tg = BT(.06), bn = [tg[1], -tg[0]];
+      stroke([X(add2(p, mul2(bn, -13.5))), X(add2(p, mul2(bn, 13.5)))], S(6), C.belt);
+      px(X(add2(p, mul2(bn, -9))), C.buckle, 2, 2); }
+    // fej: kopasz, borosta, kiberszem, halánték-implantátum
+    const Hc = X(add2(T.head, mul2(up, 1.5))), R = S(15.5);
+    const fcX = fc, upX = up;
+    disc(Hc, R, C.skin[0]);
+    disc([Hc[0] + LV[0] * 0.9, Hc[1] + LV[1] * 0.9], R - 0.9, C.skin[1]);
+    disc([Hc[0] + LV[0] * R * 0.45, Hc[1] + LV[1] * R * 0.45], Math.max(1, R * 0.28), C.skin[2]);
+    const at = (f, uu) => [Hc[0] + fcX[0] * f * R + upX[0] * uu * R, Hc[1] + fcX[1] * f * R + upX[1] * uu * R];
+    fillPoly([at(0.15, -0.15), at(1.08, -0.15), at(0.95, -0.75), at(0.45, -1.02), at(0.0, -0.8)], C.beard);  // borosta, áll
+    fillPoly([at(0.78, -0.12), at(1.18, -0.05), at(1.1, -0.38), at(0.8, -0.38)], C.skin[1]);                 // orr/száj vonal
+    px(at(-0.1, 0.0), C.skin[0], 2, 2);                                                                      // fül
+    px(at(-0.35, 0.45), C.implant, 2, 1);                                                                    // implantátum
+    stroke([at(0.42, 0.42), at(0.98, 0.38)], 1, C.beard);                                                     // szemöldök
+    px(at(0.62, 0.2), C.eye, 2, 1); px(at(0.74, 0.2), C.eyeHi, 1, 1);                                        // kiberszem
+    // közeli végtagok
+    leg('n', false); arm('n', false);
+    T.props.filter(p => !p.far).forEach(prop);
+
+    // --- kvantálás a palettára + kontúr ---
+    const img = c.getImageData(0, 0, W, H), D = img.data, N = W * H, solid = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const o = i * 4;
+      if (D[o + 3] < 110) { D[o + 3] = 0; continue; }
+      let best = 0, bd = 1e9; const r = D[o], g = D[o + 1], b = D[o + 2];
+      for (let j = 0; j < PALETTE.length; j++) { const q = PALETTE[j], dd = (q[0] - r) ** 2 + (q[1] - g) ** 2 + (q[2] - b) ** 2; if (dd < bd) { bd = dd; best = j; } }
+      const q = PALETTE[best]; D[o] = q[0]; D[o + 1] = q[1]; D[o + 2] = q[2]; D[o + 3] = 255; solid[i] = 1;
+    }
+    const ol = hex(OUTLINE);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x; if (solid[i]) continue;
+      if ((x > 0 && solid[i - 1]) || (x < W - 1 && solid[i + 1]) || (y > 0 && solid[i - W]) || (y < H - 1 && solid[i + W])) {
+        const o = i * 4; D[o] = ol[0]; D[o + 1] = ol[1]; D[o + 2] = ol[2]; D[o + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    // háttérelemek a figura MÖGÉ: talaj, árnyék, doboz
+    c.globalCompositeOperation = 'destination-over';
+    const gy = Math.round((0 - bb.y) * SK);
+    const cx = Math.round(((T.an[0] + T.af[0] + T.hip[0]) / 3 - bb.x) * SK);
+    c.fillStyle = C.shadow; c.fillRect(cx - 9, gy - 1, 18, 2); c.fillRect(cx - 6, gy + 1, 12, 1);
+    if (ex.box) { c.fillStyle = C.box; c.fillRect(Math.round((ex._boxX - bb.x) * SK), Math.round((ex._boxTop - bb.y) * SK), Math.round(ex._boxW * SK), gy - Math.round((ex._boxTop - bb.y) * SK)); }
+    c.fillStyle = C.ground; c.fillRect(0, gy, W, 1);
+    for (let x = 0; x < W; x += 6) { c.fillStyle = '#FF2E88'; c.fillRect(x, gy + 2, 3, 1); }
+    c.globalCompositeOperation = 'source-over';
+  }
+
+  function canvasFor(el) {
+    if (el.tagName === 'CANVAS') return el;
+    if (el._cv && el._cv.isConnected) return el._cv;
+    const cv = document.createElement('canvas');
+    cv.className = 'sprite';
+    cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', el.getAttribute('aria-label') || 'A gyakorlat ábrája');
+    el.after(cv); el.style.display = 'none'; el._cv = cv;
+    return cv;
+  }
+
   let fidSeq = 0;
   function render(svg, ex, u) {
+    if (typeof document !== 'undefined' && svg.ownerDocument && document.documentElement.dataset.fig !== 'vector') {
+      spriteRender(canvasFor(svg), ex, u); return;
+    }
     const bb = setup(ex);
     svg.setAttribute('viewBox', `${bb.x.toFixed(1)} ${bb.y.toFixed(1)} ${bb.w.toFixed(1)} ${bb.h.toFixed(1)}`);
     // 8 bites hatás: SVG-szűrő mintavételez és kockákra nagyít (kb. 64 „pixel” széles kép)
@@ -319,9 +490,11 @@ const FIG = (() => {
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dur = (ex.dur || 2.4) * 1000 * (opts.slow ? 1.6 : 1);
     if (reduce) { render(svg, ex, 0.5); return () => {}; }
+    let lastStep = -1;
     const tick = now => {
       if (stopped) return;
-      render(svg, ex, ((((now - start) % dur) + dur) % dur) / dur);
+      const step = Math.floor(now / 83);              // ~12 kép/mp: retró sprite-ritmus
+      if (step !== lastStep) { lastStep = step; render(svg, ex, ((((now - start) % dur) + dur) % dur) / dur); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

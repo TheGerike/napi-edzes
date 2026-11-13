@@ -219,3 +219,9 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
 .r-visor { animation: visor 2.4s steps(2) infinite; }
 @keyframes visor { 50% { fill: #9FF6FF; } }
 @media (prefers-reduced-motion: reduce) { .r-visor { animation: none; } }
+
+/* ---- Pixel art sprite ---- */
+.fig canvas.sprite { width: 100%; height: 100%; max-height: 34vh; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges;
+  filter: drop-shadow(0 0 6px rgb(0 229 255 / .25)); }
+.rest-mode .fig canvas.sprite { filter: saturate(.55) brightness(.8); }
+@media (max-height: 640px) { .fig canvas.sprite { max-height: 28vh; } }

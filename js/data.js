@@ -4,8 +4,8 @@ const S = (o = {}) => Object.assign({ t: 180, l: [[2, 0], [-2, 0]], a: [[0, 0], 
 const EX = {
   // ---------- BEMELEGÍTÉS / MOBILITÁS ----------
   karkorzes: {
-    name: 'Karkörzés', mode: 'loop', linear: true, dur: 2.2, anch: 'an',
-    frames: [S({ a: [[0, 0], [10, 10]] }), S({ a: [[120, 120], [130, 130]] }), S({ a: [[240, 240], [250, 250]] })],
+    name: 'Karkörzés', mode: 'loop', linear: true, spin: true, dur: 2.2, anch: 'an',
+    frames: [S({ a: [[0, 0], [10, 10]] }), S({ a: [[90, 90], [100, 100]] }), S({ a: [[180, 180], [190, 190]] }), S({ a: [[270, 270], [280, 280]] })],
     cues: ['Nyújtott karral, nagy körökkel', 'Félidőben válts irányt', 'Hasat enyhén feszítsd'],
     easy: 'Kisebb körök, behajlított könyök'
   },

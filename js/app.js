@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true });
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
