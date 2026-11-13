@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true });
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
@@ -31,7 +31,10 @@ const nextType = () => {
 const lastPain = () => { const l = ST.log[ST.log.length - 1]; return !!(l && l.r === 'faj'); };
 const recPlus = () => lastPain() ? 'mob' : PLUS_CYCLE[ST.plusPtr % PLUS_CYCLE.length];
 const plusMins = (type, level, plus) => totalSec(buildSteps(type, level, plus)) - totalSec(buildSteps(type, level, null));
-const logLabel = e => (BASE[e.type] ? BASE[e.type].short : 'Korábbi edzés') + (e.plus && PLUS[e.plus] ? ' + ' + PLUS[e.plus].short : '');
+const logLabel = e => e.type === 'P' ? 'Csak plusz: ' + (PLUS[e.plus] ? PLUS[e.plus].short : 'blokk')
+  : (BASE[e.type] ? BASE[e.type].short : 'Korábbi edzés') + (e.plus && PLUS[e.plus] ? ' + ' + PLUS[e.plus].short : '');
+const sessLabel = (type, plus) => type === 'P' ? 'Csak plusz: ' + PLUS[plus].short : BASE[type].short + (plus ? ' + ' + PLUS[plus].short : '');
+const stepsFor = (type, level, plus) => type === 'P' ? buildPlusOnly(plus, level) : buildSteps(type, level, plus);
 const daySet = () => new Set(ST.log.map(e => e.d.slice(0, 10)));
 function streak() {
   const ds = daySet(); const d = new Date();
@@ -61,7 +64,7 @@ function renderHome() {
   const doneToday = daySet().has(dayKey());
   const weekCount = wk.filter(w => w.done).length;
   let run = null; try { run = JSON.parse(localStorage.getItem(LS_RUN)); } catch (e) {}
-  if (run && (run.pv !== 2 || Date.now() - run.savedAt > 6 * 3600e3 || !BASE[run.type] || (run.plus && !PLUS[run.plus]))) run = null;
+  if (run && (run.pv !== 2 || Date.now() - run.savedAt > 6 * 3600e3 || (run.type === 'P' ? !PLUS[run.plus] : !BASE[run.type]) || (run.plus && !PLUS[run.plus]))) run = null;
   const P = S0.levels[ST.level];
   const now = new Date();
   const dateTxt = now.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' });
@@ -83,12 +86,12 @@ function renderHome() {
     plan += `<button data-jump="${i}"><span>${esc(EX[s.ex].name)}${s.sided ? ' <span class="muted">(2 oldal)</span>' : ''}${EX[s.ex].kg ? `<br><span class="muted">${esc(EX[s.ex].kg)}</span>` : ''}</span><span class="num">${s.dur} mp</span></button>`;
   });
 
-  const log = ST.log.slice(-8).reverse().map(e => {
+  const log = ST.log.map((e, i) => [e, i]).slice(-15).reverse().map(([e, i]) => {
     const d = new Date(e.d);
-    return `<div><span>${d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })} · ${esc(logLabel(e))}${e.lvl ? ' · ' + e.lvl + '. szint' : ''}${e.part ? ' · részleges' : ''}</span><span class="muted">${minsTxt(e.sec)}${e.r ? ' · ' + RATE[e.r] : ''}</span></div>`;
+    return `<div><span>${d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })} · ${esc(logLabel(e))}${e.lvl ? ' · ' + e.lvl + '. szint' : ''}${e.part ? ' · részleges' : ''}<br><span class="muted">${minsTxt(e.sec)}${e.r ? ' · ' + RATE[e.r] : ''}</span></span><button class="btn small logdel" data-del="${i}" aria-label="Edzés törlése">Törlés</button></div>`;
   }).join('') || '<p class="muted">Még nincs elvégzett edzés. Az első után itt látod a naplót.</p>';
 
-  const runName = run ? (EX[(buildSteps(run.type, run.level || ST.level, run.plus || null)[run.idx] || {}).ex] || {}).name : '';
+  const runName = run ? (EX[(stepsFor(run.type, run.level || ST.level, run.plus || null)[run.idx] || {}).ex] || {}).name : '';
   $('#home').innerHTML = `
   <div class="top"><h1>Napi edzés</h1><span class="date">${esc(dateTxt)}</span></div>
   ${showInstallHint() ? `<section class="card install" id="iosHint">
@@ -96,7 +99,7 @@ function renderHome() {
     <p style="margin:0">Telepítsd az alkalmazást: Safariban koppints a Megosztás gombra, majd a „Főképernyőhöz adás” pontra. Így teljes képernyőn, internet nélkül is fut.</p>
     <button class="btn small" id="hideHint" style="justify-self:start">Rendben, elrejtem</button>
   </section>` : ''}
-  ${run ? `<div class="notice">Félbehagyott edzés: <b>${esc(BASE[run.type].short)}${run.plus ? ' + ' + esc(PLUS[run.plus].short) : ''}</b>, itt tartottál: ${esc(runName || 'eleje')}.
+  ${run ? `<div class="notice">Félbehagyott edzés: <b>${esc(sessLabel(run.type, run.plus))}</b>, itt tartottál: ${esc(runName || 'eleje')}.
      <div class="row" style="margin-top:8px"><button class="btn small" id="resume">Folytatás</button><button class="btn small" id="drop">Elvetés</button></div></div>` : ''}
   <section class="card today">
     <div class="eyebrow">${type === nt ? 'Mai alap' : 'Kiválasztott alap'}${doneToday ? ' · ma már edzettél' : ''}</div>
@@ -117,6 +120,14 @@ function renderHome() {
       <button class="chip" data-plus="none" aria-pressed="${plus === null}"><b>Nincs</b><span>csak alap</span></button>
     </div>
     <p class="muted" style="margin:0">${plus ? `${esc(PLUS[plus].name)} · ${esc(PLUS[plus].gear)}. ` : ''}${lastPain() && rec === 'mob' ? 'Legutóbb fájt valami, ezért ma a mobilitást ajánlom. ' : 'A pötty az ajánlott blokkot jelöli. '}Az alap kör végén még meggondolhatod.</p>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2 style="font-size:22px">Csak egy plusz blokk</h2><span class="muted">alap nélkül</span></div>
+    <p class="muted" style="margin:0">Önállóan indítható, rövid bemelegítéssel és nyújtással, kb. 9–10 perc. Jó például délután egy második, rövid edzésnek.</p>
+    <div class="chips three" role="group" aria-label="Plusz blokk önállóan">
+      ${PLUS_ORDER.map(k => `<button class="chip" data-solo="${k}"><b>${esc(PLUS[k].short)}</b><span>~${Math.round(totalSec(buildPlusOnly(k, ST.level)) / 60)} perc</span></button>`).join('')}
+    </div>
   </section>
 
   <section class="card">
@@ -213,6 +224,8 @@ function renderHome() {
   </section>`;
 
   $('#go').onclick = () => start(type, 0, ST.level, plus);
+  document.querySelectorAll('[data-solo]').forEach(b => b.onclick = () => start('P', 0, ST.level, b.dataset.solo));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => askDelete(+b.dataset.del));
   document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { pick = b.dataset.pick === nt ? null : b.dataset.pick; renderHome(); });
   document.querySelectorAll('[data-plus]').forEach(b => b.onclick = () => { const v = b.dataset.plus; pickPlus = v === rec ? null : v; renderHome(); });
   document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => start(type, +b.dataset.jump, ST.level, plus));
@@ -234,6 +247,19 @@ function renderHome() {
   $('#bkCopy').onclick = copyBackup;
   $('#bkPaste').onclick = pasteSheet;
   showPendingUpdate();
+}
+
+function deleteEntry(i) {
+  const e = ST.log[i]; if (!e) return;
+  if (e.ptr) ST.plusPtr = Math.max(0, (ST.plusPtr || 0) - 1);   // az ajánlási sorrend is visszaáll
+  ST.log.splice(i, 1); save();
+}
+function askDelete(i) {
+  const e = ST.log[i]; if (!e) return;
+  const d = new Date(e.d);
+  sheet(`<h2>Törlöd ezt az edzést?</h2><p class="muted" style="margin:0">${esc(d.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' }))} · ${esc(logLabel(e))} · ${minsTxt(e.sec)}. A statisztika, a hét és a szintlépés számlálója is frissül.</p>
+    <div class="btns"><button class="btn primary" id="shYes">Igen, törlöm</button><button class="btn" id="shNo">Mégse</button></div>`, {
+    shYes: () => { deleteEntry(i); closeSheet(); renderHome(); }, shNo: closeSheet });
 }
 
 /* ================= MENTÉS ÉS VISSZAÁLLÍTÁS ================= */
@@ -435,9 +461,10 @@ const clearRun = () => { try { localStorage.removeItem(LS_RUN); } catch (e) {} }
 
 function start(type, from = 0, level = ST.level, plus = null, vis = null) {
   unlockAudio(); keepAwake(true); closeSheet(); hideUpdate();
-  if (!BASE[type]) type = 'A';
   if (plus && !PLUS[plus]) plus = null;
-  const steps = buildSteps(type, level, plus);
+  if (type === 'P' && !plus) type = 'A';
+  if (type !== 'P' && !BASE[type]) type = 'A';
+  const steps = stepsFor(type, level, plus);
   const idx = Math.min(from, steps.length - 1), ps = steps.findIndex(s => s.plusStart);
   R = { type, level, plus, steps, idx, base: 0, t0: now(), running: true, waiting: false,
     startedAt: Date.now(), pausedTotal: 0, pauseAt: 0, lastBeep: null, sideDone: false, done: false,
@@ -509,7 +536,7 @@ function enterStep(quiet) {
   $('#pName').innerHTML = esc(ex.name) + (ex.kg ? `<div class="kg">${esc(ex.kg)}</div>` : '');
   const workNo = R.steps.slice(0, R.idx + 1).filter(x => x.kind === 'work').length + (s.kind === 'work' ? 0 : 1);
   $('#pSec').textContent = s.sec + (s.round ? ` · ${s.round}/${s.rounds}. kör` : '');
-  $('#pWhere').textContent = `${Math.min(workNo, R.workTotal)}/${R.workTotal}. gyakorlat · ${BASE[R.type].short}${R.plus ? ' + ' + PLUS[R.plus].short : ''} · ${R.level}. szint`;
+  $('#pWhere').textContent = `${Math.min(workNo, R.workTotal)}/${R.workTotal}. gyakorlat · ${sessLabel(R.type, R.plus)} · ${R.level}. szint`;
   let info = '';
   if (s.brief) info += `<div class="notice">${esc(s.brief)}</div>`;
   info += `<ul class="cues">${ex.cues.map(c => `<li>${esc(c)}</li>`).join('')}</ul><div class="easy"><b>Könnyítés:</b> ${esc(ex.easy)}</div>`;
@@ -657,18 +684,18 @@ function finish(partial) {
   // Csak a ténylegesen elvégzett (megnyitott) gyakorlatok számítanak; Lista-ugrással nem lehet „letudni” egy részt
   const doneShare = part => { const ix = R.steps.map((x, i) => x.kind === 'work' && x.part === part ? i : -1).filter(i => i >= 0);
     return ix.length ? ix.filter(i => R.vis.has(i)).length / ix.length : 0; };
-  const full = (!partial || baseDone()) && doneShare('base') >= 0.75;
+  const full = R.type === 'P' ? doneShare('plus') >= 0.75 : (!partial || baseDone()) && doneShare('base') >= 0.75;
   const plusDone = R.plus && doneShare('plus') >= 0.75 ? R.plus : null;
   const entry = { d: new Date().toISOString(), type: R.type, lvl: R.level, sec, r: null, plus: plusDone };
   if (!full) entry.part = true;
-  if (plusDone && plusDone === PLUS_CYCLE[(ST.plusPtr || 0) % PLUS_CYCLE.length]) ST.plusPtr = (ST.plusPtr || 0) + 1;
+  if (plusDone && plusDone === PLUS_CYCLE[(ST.plusPtr || 0) % PLUS_CYCLE.length]) { ST.plusPtr = (ST.plusPtr || 0) + 1; entry.ptr = true; }
   ST.log.push(entry); save();
   if (!partial) { beep('done'); vib([200, 100, 200]); speak('Kész! Szép munka.'); }
   const p = $('#player'); p.classList.remove('rest-mode');
   p.innerHTML = `<div></div><div></div>
   <div class="stage" style="grid-template-rows:auto;align-content:center;gap:14px">
     <div class="phase" style="background:var(--ok)">${partial ? 'MENTVE' : 'KÉSZ'}</div>
-    <h2 class="exname">${esc(BASE[R.type].title)}${plusDone ? `<div class="kg">+ ${esc(PLUS[plusDone].name)}</div>` : ''}</h2>
+    <h2 class="exname">${R.type === 'P' ? esc('Plusz blokk: ' + PLUS[R.plus].name) : esc(BASE[R.type].title)}${plusDone && R.type !== 'P' ? `<div class="kg">+ ${esc(PLUS[plusDone].name)}</div>` : ''}</h2>
     <div class="big num">${fmt(sec)}</div>
     <p class="muted" style="margin:0">${streak()} nap egymás után · ${ST.log.length}. edzés összesen</p>
     <h3 style="font-size:20px;margin-top:10px">Milyen volt?</h3>
@@ -680,7 +707,7 @@ function finish(partial) {
     </div>
     <div id="fb"></div>
   </div>
-  <div class="btns"><button class="btn primary" id="fHome">Kész, vissza a kezdőlapra</button><button class="btn" id="fAgain">Ismétlés</button></div>`;
+  <div class="btns"><button class="btn primary" id="fHome">Kész, vissza a kezdőlapra</button><button class="btn" id="fAgain">Ismétlés</button><button class="btn small" id="fDiscard">Ne mentsd, csak kipróbáltam</button></div>`;
   const type = R.type, level = R.level, plusAgain = R.plus;
   p.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
     entry.r = b.dataset.r; save();
@@ -695,6 +722,7 @@ function finish(partial) {
     $('#fb').innerHTML = `<div class="notice${entry.r === 'faj' || entry.r === 'nehez' ? '' : ' ok'}">${msg}${lp.ready ? `<br><b>Elérted a ${ST.level + 1}. szint feltételét.</b> A kezdőlapon tudsz váltani.` : ''}</div>`;
   });
   $('#fHome').onclick = quit;
+  $('#fDiscard').onclick = () => { const i = ST.log.indexOf(entry); if (i >= 0) deleteEntry(i); quit(); };
   $('#fAgain').onclick = () => start(type, 0, level, plusAgain);
 }
 

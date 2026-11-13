@@ -462,21 +462,43 @@ function buildSteps(type, level, plus) {
   const P = BASE[type].levels[level];
   circuit(push, P, 'Alap kör', 'base',
     `Alap kör: ${P.rounds} kör, ${P.work} mp munka, ${P.rest} mp pihenő. Eszköz nélkül, bárhol megy. Egyenletes tempó, tiszta technika.`);
-  if (plus && PLUS[plus]) {
-    const B = PLUS[plus], sec = 'Plusz: ' + B.short;
-    if (B.list) {
-      B.list.forEach(([id, d], i) => {
-        push({ kind: 'trans', ex: id, dur: i === 0 ? 10 : 8, sec, part: 'plus', plusStart: i === 0,
-          brief: i === 0 ? `Plusz blokk: ${B.name}. Lassan, a fájdalommentes tartományban.` : undefined });
-        push({ kind: 'work', ex: id, dur: d, sec, part: 'plus', sided: !!EX[id].sided });
-      });
-    } else {
-      const Q = B.levels[level];
-      circuit(push, Q, sec, 'plus', `Plusz blokk: ${B.name}, ${Q.rounds} kör, ${Q.work} mp munka, ${Q.rest} mp pihenő.` +
-        (plus === 'ero' ? ' Akkor jó a súly, ha a munkaidő végén még kb. 2 ismétlés maradna benned.' : ''));
-    }
-  }
+  if (plus && PLUS[plus]) pushPlus(push, plus, level);
   COOLDOWN.forEach(([id, d], i) => {
+    push({ kind: 'trans', ex: id, dur: i === 0 ? 10 : 5, sec: 'Nyújtás', part: 'cool' });
+    push({ kind: 'work', ex: id, dur: d, sec: 'Nyújtás', part: 'cool', sided: !!EX[id].sided });
+  });
+  return steps;
+}
+
+/* A plusz blokk lépései (az alap után, vagy önállóan indítva) */
+function pushPlus(push, plus, level, solo) {
+  const B = PLUS[plus], sec = 'Plusz: ' + B.short;
+  if (B.list) {
+    B.list.forEach(([id, d], i) => {
+      push({ kind: 'trans', ex: id, dur: i === 0 ? 10 : 8, sec, part: 'plus', plusStart: i === 0 && !solo,
+        brief: i === 0 ? `Plusz blokk: ${B.name}. Lassan, a fájdalommentes tartományban.` : undefined });
+      push({ kind: 'work', ex: id, dur: d, sec, part: 'plus', sided: !!EX[id].sided });
+    });
+  } else {
+    const Q = B.levels[level];
+    circuit(push, Q, sec, 'plus', `Plusz blokk: ${B.name}, ${Q.rounds} kör, ${Q.work} mp munka, ${Q.rest} mp pihenő.` +
+      (plus === 'ero' ? ' Akkor jó a súly, ha a munkaidő végén még kb. 2 ismétlés maradna benned.' : ''));
+  }
+}
+/* Csak a plusz blokk: rövid bemelegítés + blokk + rövid nyújtás (kb. 8–10 perc) */
+const MINI_WARM = [['karkorzes', 30], ['macskateve', 30], ['csipozsaner', 30], ['guggolas', 30]];
+const MINI_COOL = [['csipohajlito', 60], ['kobra', 30], ['gyermekpoz', 40]];
+function buildPlusOnly(plus, level) {
+  const steps = [];
+  const push = s => steps.push(s);
+  push({ kind: 'prep', ex: MINI_WARM[0][0], dur: 10, sec: 'Bemelegítés', part: 'warm' });
+  MINI_WARM.forEach(([id, d], i) => {
+    if (i > 0) push({ kind: 'trans', ex: id, dur: 5, sec: 'Bemelegítés', part: 'warm' });
+    push({ kind: 'work', ex: id, dur: d, sec: 'Bemelegítés', part: 'warm', sided: !!EX[id].sided });
+  });
+  pushPlus(push, plus, level, true);
+  steps.forEach(s => { s.plusStart = false; });
+  MINI_COOL.forEach(([id, d], i) => {
     push({ kind: 'trans', ex: id, dur: i === 0 ? 10 : 5, sec: 'Nyújtás', part: 'cool' });
     push({ kind: 'work', ex: id, dur: d, sec: 'Nyújtás', part: 'cool', sided: !!EX[id].sided });
   });
