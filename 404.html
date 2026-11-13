@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F1317">
+<title>Napi edzés – az oldal nem található</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0F1317; color: #E8ECEF; }
+  body { display: flex; align-items: center; justify-content: center; text-align: center;
+         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 0 16px; }
+  a { color: #FF8A3D; font-weight: 600; }
+  p { margin: 0 0 12px; }
+</style>
+<script>
+  (function () {
+    // GitHub Pages projektoldal (user.github.io/napi-edzes/...): az első útvonalszakasz az app gyökere.
+    // Más (gyökér) hoszton: '/'.
+    var target = '/';
+    var seg = location.pathname.split('/')[1];
+    if (/github\.io$/i.test(location.hostname) && seg) target = '/' + seg + '/';
+    window.__target = target;
+    if (location.pathname !== target) location.replace(target);
+  })();
+</script>
+</head>
+<body>
+  <div>
+    <p>Az oldal nem található. Átirányítás…</p>
+    <p><a id="back" href="./">Vissza az alkalmazáshoz</a></p>
+  </div>
+  <script>document.getElementById('back').href = window.__target || './';</script>
+</body>
+</html>

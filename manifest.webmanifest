@@ -1,0 +1,19 @@
+{
+  "name": "Napi edzés",
+  "short_name": "Edzés",
+  "description": "Napi 15–20 perces otthoni edzés időzítővel, offline is.",
+  "lang": "hu",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0F1317",
+  "background_color": "#0F1317",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
