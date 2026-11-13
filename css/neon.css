@@ -244,3 +244,15 @@ details.card.fold > summary:focus-visible { outline: 2px dashed var(--rest); out
 details.card.fold details { border-top: 1px dashed var(--line); }
 .music-btn { display: block; text-align: center; text-decoration: none; color: var(--text); border-color: #1DB954; box-shadow: 3px 3px 0 0 #000, 0 0 12px rgb(29 185 84 / .35); }
 .ptop a.listbtn { text-decoration: none; color: #1DB954; display: grid; place-items: center; min-width: 44px; }
+
+/* karakterválasztó előnézettel */
+.chip.charchip { padding: 6px 6px 10px; gap: 4px; }
+.chip.charchip img { display: block; width: 100%; height: auto; aspect-ratio: 240 / 304; object-fit: cover; image-rendering: auto;
+  border: 2px solid var(--line); background: #0A0614; margin-bottom: 4px; }
+.chip.charchip[aria-pressed="true"] img { border-color: var(--accent); box-shadow: 0 0 14px rgb(255 46 136 / .45); }
+.charpick { gap: 10px; }
+.charpick .chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.charpick .chip.charchip { padding: 4px 4px 6px; min-height: 0; }
+.charpick .chip.charchip b { font-size: 11px; line-height: 1.4; }
+.charpick .chip.charchip img { margin-bottom: 2px; }
+.charpick h2 { font-size: 16px !important; margin: 0; }

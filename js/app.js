@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.3.1';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon' });
 const CHARS = [['neon', 'Neon', 'kiberpunk lány'], ['shade', 'Shade', 'szamurájsisakos'], ['katana', 'Katana', 'kiborg, kard a hátán'], ['ronin', 'Ronin', 'kiborg műkarral']];
@@ -104,6 +104,12 @@ function renderHome() {
   const runName = run ? (EX[(stepsFor(run.type, run.level || ST.level, run.plus || null)[run.idx] || {}).ex] || {}).name : '';
   $('#home').innerHTML = `
   <div class="top"><h1>Napi edzés</h1><span class="date">${esc(dateTxt)}</span></div>
+  <section class="card charpick" aria-labelledby="charH">
+    <h2 id="charH">Az edződ</h2>
+    <div class="chars" role="group" aria-label="Edző karakter">
+      ${CHARS.map(([k, n, d]) => `<button class="chip charchip" data-char="${k}" aria-pressed="${(ST.set.char || 'neon') === k}" title="${esc(n + ': ' + d)}"><img src="icons/char-${k}.webp" alt="" width="240" height="304" decoding="async"><b>${n}</b></button>`).join('')}
+    </div>
+  </section>
   ${showInstallHint() ? `<section class="card install" id="iosHint">
     <h2 style="font-size:22px">Ikon a kezdőképernyőre</h2>
     <p style="margin:0">Telepítsd az alkalmazást: Safariban koppints a Megosztás gombra, majd a „Főképernyőhöz adás” pontra. Így teljes képernyőn, internet nélkül is fut.</p>
@@ -173,10 +179,6 @@ function renderHome() {
        ['auto', 'Automatikus továbblépés', 'Ha kikapcsolod, minden gyakorlat végén megáll, és te lépsz tovább.'],
        ['wake', 'Kijelző ébren tartása', 'Edzés közben nem alszik el a telefon.']]
       .map(([k, l, d]) => `<div class="set"><label for="set-${k}">${l}<small>${d}</small></label><input type="checkbox" class="switch" id="set-${k}" data-set="${k}" ${ST.set[k] ? 'checked' : ''}></div>`).join('')}
-    <div class="set"><label>Edző karakter<small>Ő mutatja a gyakorlatokat.</small></label></div>
-    <div class="chips two" role="group" aria-label="Edző karakter">
-      ${CHARS.map(([k, n, d]) => `<button class="chip" data-char="${k}" aria-pressed="${(ST.set.char || 'neon') === k}"><b>${n}</b><span>${d}</span></button>`).join('')}
-    </div>
     <p class="muted" style="margin:0">Az adataid csak ezen a telefonon tárolódnak. Készíts rendszeresen mentést.</p>
     <div class="set music"><label for="musicUrl">Zene: Spotify lejátszási lista<small>A „Zene” gomb ezt nyitja meg a Spotify appban. Bármelyik lista linkjét beillesztheted (Spotify: Megosztás → Link másolása).</small></label></div>
     <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="musicUrl" class="bktext" style="min-height:0;height:44px;resize:none;flex:1" value="${esc(musicUrl())}" inputmode="url" autocomplete="off"><button class="btn small" id="musicSave">Mentés</button></div>
