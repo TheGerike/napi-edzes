@@ -178,24 +178,44 @@ details p, details li, .cues { color: #D9D0F5; font-size: 20px; line-height: 1.1
 .altlist .btn .muted { font-size: 17px; }
 
 /* ---- Neon ronin karakter ---- */
-.cy-armor, .cy-line, .cy-torso, .cy-chest, .cy-belt, .cy-visor, .cy-crest, .cy-scab, .cy-blade, .cy-hilt, .cy-guard { fill: none; stroke-linecap: square; stroke-linejoin: miter; }
-.cy-armor { stroke: #2E2058; stroke-width: 12; }
-.cy-armor.arm { stroke-width: 10; }
-.cy-armor.far { stroke: #1A1133; stroke-width: 10; }
-.cy-line { stroke: var(--rest); stroke-width: 3.5; }
-.cy-line.far { stroke: #3C6E9E; stroke-width: 3; }
-.cy-torso { stroke: #2E2058; stroke-width: 22; }
-.cy-chest { stroke: var(--accent); stroke-width: 3.5; }
-.cy-belt { stroke: var(--metal); stroke-width: 5; }
-.cy-helm { fill: #2E2058; stroke: var(--rest); stroke-width: 3; }
-.cy-visor { stroke: #E9FEFF; stroke-width: 5; }
-.cy-crest { stroke: var(--metal); stroke-width: 3.5; }
-.cy-scab { stroke: #3A1030; stroke-width: 7; }
-.cy-blade { stroke: var(--accent); stroke-width: 3.2; }
-.cy-hilt { stroke: var(--metal); stroke-width: 5; }
-.cy-guard { stroke: var(--metal); stroke-width: 3.5; }
-.cy-pauldron { fill: #4A1240; stroke: var(--accent); stroke-width: 3; }
-.cy-joint { fill: var(--accent); }
-.cy-fist { fill: #E9FEFF; } .cy-fist.far { fill: #3C6E9E; }
-.fig svg { filter: drop-shadow(0 0 3px rgb(0 229 255 / .7)) drop-shadow(0 0 10px rgb(255 46 136 / .35)); }
-.rest-mode .fig svg { filter: saturate(.55) brightness(.85) drop-shadow(0 0 4px rgb(91 65 168 / .8)); }
+.r-shadow { fill: rgb(0 0 0 / .55); }
+.r-armor { fill: #5640A8; } .r-armor.far { fill: #2E2366; }
+.r-hi { fill: #9A84FF; }
+.r-boot { fill: #24184A; } .r-boot.far { fill: #1A1236; }
+.r-sole { stroke: var(--rest); stroke-width: 2; }
+.r-trim { stroke: var(--rest); stroke-width: 2.6; stroke-linecap: square; } .r-trim.far { stroke: #2C5C86; stroke-width: 2; }
+.r-pad { fill: #4A1240; stroke: var(--accent); stroke-width: 1.8; }
+.r-led { fill: #E9FEFF; }
+.r-glove { fill: #2A1D58; stroke: var(--rest); stroke-width: 1.8; } .r-glove.far { fill: #120A22; stroke: #2C5C86; }
+.r-torso { fill: #4A3796; }
+.r-plate { fill: #7158D8; }
+.r-edge { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: miter; }
+.r-core-ring { fill: #120A24; stroke: var(--rest); stroke-width: 1.8; }
+.r-core { fill: #E9FEFF; }
+.r-belt { fill: #E0A800; } .r-buckle { fill: var(--metal); }
+.r-sash { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: square; stroke-linejoin: round; }
+.r-scab { stroke: #2A1240; stroke-width: 6.5; stroke-linecap: square; }
+.r-scab-edge { stroke: var(--accent); stroke-width: 1.8; }
+.r-hilt { stroke: #120A24; stroke-width: 5; stroke-linecap: square; }
+.r-wrap { stroke: var(--metal); stroke-width: 1.8; }
+.r-guard { stroke: var(--metal); stroke-width: 3.2; stroke-linecap: square; }
+.r-shikoro { fill: #3A2B7A; stroke: var(--accent); stroke-width: 1.5; }
+.r-band { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: square; stroke-linejoin: round; }
+.r-band.thin { stroke-width: 2.2; stroke: #C21F68; }
+.r-helm { fill: #5640A8; stroke: #1A1133; stroke-width: 1.5; }
+.r-helm-hi { fill: none; stroke: #B3A2FF; stroke-width: 2.4; stroke-linecap: round; }
+.r-mask { fill: #160E2C; }
+.r-visor { fill: var(--rest); }
+.r-crest { fill: none; stroke: var(--metal); stroke-width: 3; stroke-linecap: square; stroke-linejoin: miter; }
+.r-jewel { fill: var(--accent); }
+.r-sode { fill: #7158D8; stroke: #1A1133; stroke-width: 1.2; }
+.r-sode-edge { stroke: var(--accent); stroke-width: 2.4; stroke-linecap: square; }
+.fg-kb path { stroke: #8A97A6; stroke-width: 4; } .fg-kb circle { fill: #2A2F38; } .fg-kb .kb-hi { fill: #5A6574; }
+.fg-db rect { fill: #3A4250; } .fg-db .plate { fill: #8A97A6; } .fg-db.far rect { fill: #262B35; } .fg-db.far .plate { fill: #4A5260; }
+.fig svg { filter: drop-shadow(0 0 2px rgb(0 229 255 / .55)) drop-shadow(0 0 10px rgb(255 46 136 / .25)); }
+.rest-mode .fig svg { filter: saturate(.5) brightness(.8) drop-shadow(0 0 4px rgb(91 65 168 / .8)); }
+.r-ghost { opacity: .22; } .r-ghost.g2 { opacity: .38; }
+.r-ghost * { fill: var(--rest) !important; stroke: var(--rest) !important; }
+.r-visor { animation: visor 2.4s steps(2) infinite; }
+@keyframes visor { 50% { fill: #9FF6FF; } }
+@media (prefers-reduced-motion: reduce) { .r-visor { animation: none; } }

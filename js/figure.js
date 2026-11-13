@@ -119,7 +119,7 @@ const FIG = (() => {
       T.props.forEach(pp => { x0 = Math.min(x0, pp.at[0] - 12); x1 = Math.max(x1, pp.at[0] + 12); y0 = Math.min(y0, pp.at[1] - 6); });
     }
     if (ex.box) { x0 = Math.min(x0, ex._boxX - 4); x1 = Math.max(x1, ex._boxX + ex._boxW + 4); }
-    x0 -= 22; x1 += 22; y0 -= 26;  // hely a sisaktaréjnak, kardmarkolatnak, páncélnak
+    x0 -= 26; x1 += 26; y0 -= 32;  // hely a sisaktaréjnak, kardmarkolatnak, páncélnak
     const W = Math.max(210, x1 - x0 + 30), H = Math.max(170, -y0 + 28);
     const cx = (x0 + x1) / 2;
     return { x: cx - W / 2, y: -H + 14, w: W, h: H };
@@ -132,67 +132,156 @@ const FIG = (() => {
     ex._boxW = 44; ex._boxX = a[0] - 30; ex._boxTop = a[1] + 3;
   }
 
-  const seg = (p, q, cls) => `<line class="${cls}" x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}"/>`;
-  const poly = (pts, cls) => `<polyline class="${cls}" points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"/>`;
 
-  // „Neon ronin”: saját kiberszamuráj-karakter ugyanarra a csontvázra rajzolva
-  const pt = p => p[0].toFixed(1) + ',' + p[1].toFixed(1);
+  // ===== „Neon ronin” karakter: térfogatos végtagok, árnyékolt páncél, sisak, katana, lobogó szalagok =====
+  const F = n => n.toFixed(1);
   const mul = (p, k) => [p[0] * k, p[1] * k];
   const sub = (p, q) => [p[0] - q[0], p[1] - q[1]];
   const norm = p => { const l = Math.hypot(p[0], p[1]) || 1; return [p[0] / l, p[1] / l]; };
-  const line = (p, q, cls) => `<line class="${cls}" x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}"/>`;
-  const pl = (pts, cls) => `<polyline class="${cls}" points="${pts.map(pt).join(' ')}"/>`;
-  const dot = (p, r, cls) => `<circle class="${cls}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}"/>`;
+  const perp = p => [-p[1], p[0]];
+  const pts = a => a.map(p => F(p[0]) + ',' + F(p[1])).join(' ');
+  const poly = (a, cls) => `<polygon class="${cls}" points="${pts(a)}"/>`;
+  const circ = (p, r, cls) => `<circle class="${cls}" cx="${F(p[0])}" cy="${F(p[1])}" r="${r}"/>`;
+  const ln = (p, q, cls) => `<line class="${cls}" x1="${F(p[0])}" y1="${F(p[1])}" x2="${F(q[0])}" y2="${F(q[1])}"/>`;
+  const pl = (a, cls) => `<polyline class="${cls}" points="${pts(a)}"/>`;
+  const LIGHT = norm([-0.45, -1]);                 // fény balról-felülről
+  let clock = 0;
 
-  function draw(ex, T) {
+  // kúpos „kapszula” végtag: két végén eltérő szélesség, kerek ízületekkel, felül fénycsíkkal
+  function capsule(p, q, w1, w2, base, hi) {
+    const dir = norm(sub(q, p)), nn = perp(dir);
+    const quad = [add(p, mul(nn, w1 / 2)), add(q, mul(nn, w2 / 2)), add(q, mul(nn, -w2 / 2)), add(p, mul(nn, -w1 / 2))];
+    let o = poly(quad, base) + circ(p, w1 / 2, base) + circ(q, w2 / 2, base);
+    if (hi) {
+      const side = (nn[0] * LIGHT[0] + nn[1] * LIGHT[1]) >= 0 ? 1 : -1;
+      const a1 = add(p, mul(nn, side * w1 * 0.18)), b1 = add(q, mul(nn, side * w2 * 0.18));
+      o += poly([add(a1, mul(nn, side * w1 * 0.22)), add(b1, mul(nn, side * w2 * 0.22)), add(b1, mul(nn, -side * w2 * 0.06)), add(a1, mul(nn, -side * w1 * 0.06))], hi);
+    }
+    return o;
+  }
+
+  function draw(ex, T, ghost) {
     let s = '';
     const bb = ex._bb;
-    s += `<line class="fg-ground" x1="${bb.x}" y1="${GROUND + 1.5}" x2="${bb.x + bb.w}" y2="${GROUND + 1.5}"/>`;
-    if (ex.box) s += `<rect class="fg-box" x="${ex._boxX}" y="${ex._boxTop}" width="${ex._boxW}" height="${GROUND - ex._boxTop}" rx="3"/>`;
-    const d = norm(sub(T.neck, T.hip));           // törzs iránya (csípő → nyak)
-    const n = [d[1], -d[0]];                        // hát felé
-    const f = mul(n, -1);                           // mell / arc felé
-    const u = norm(sub(T.head, T.neck));            // fej „fel” iránya
-    const fh = [u[1] * -1, u[0]];                   // arc iránya a fejhez képest
-    const face = (fh[0] * f[0] + fh[1] * f[1]) >= 0 ? fh : mul(fh, -1);
-    const P = (a, k1, b, k2) => add(add(a, mul(b, k1)), k2 ? mul(k2[0], k2[1]) : [0, 0]);
+    clock = (typeof performance !== 'undefined' ? performance.now() : 0) / 1000;
+    // talaj + árnyék
+    if (!ghost) s += `<line class="fg-ground" x1="${bb.x}" y1="${GROUND + 1.5}" x2="${bb.x + bb.w}" y2="${GROUND + 1.5}"/>`;
+    const cx = (T.an[0] + T.af[0] + T.hip[0]) / 3, lift = Math.max(0, -Math.max(T.an[1], T.af[1]));
+    if (!ghost) s += `<ellipse class="r-shadow" cx="${F(cx)}" cy="${GROUND}" rx="${F(Math.max(18, 30 - lift * .2))}" ry="3.5"/>`;
+    if (ex.box && !ghost) s += `<rect class="fg-box" x="${ex._boxX}" y="${ex._boxTop}" width="${ex._boxW}" height="${GROUND - ex._boxTop}" rx="2"/>`;
+
+    const d = norm(sub(T.neck, T.hip)), back = [d[1], -d[0]], front = mul(back, -1);
+    const up = norm(sub(T.head, T.neck));
+    let fc = perp(up); if (fc[0] * front[0] + fc[1] * front[1] < 0) fc = mul(fc, -1);   // arc iránya
     const props = T.props;
     const drawProp = pp => {
       const [x, y] = pp.at;
-      if (pp.k === 'kb') return `<g class="fg-kb"><path d="M${x - 7},${y + 9} C${x - 8},${y - 3} ${x + 8},${y - 3} ${x + 7},${y + 9}" fill="none"/><circle cx="${x}" cy="${y + 14}" r="10"/></g>`;
-      return `<g class="fg-db${pp.far ? ' far' : ''}"><circle cx="${x}" cy="${y}" r="7"/><circle class="hole" cx="${x}" cy="${y}" r="2.4"/></g>`;
+      if (pp.k === 'kb') return `<g class="fg-kb"><path d="M${x - 7},${y + 9} C${x - 8},${y - 3} ${x + 8},${y - 3} ${x + 7},${y + 9}" fill="none"/><circle cx="${x}" cy="${y + 14}" r="10"/><circle class="kb-hi" cx="${x - 3.5}" cy="${y + 10.5}" r="3"/></g>`;
+      return `<g class="fg-db${pp.far ? ' far' : ''}"><rect x="${x - 9}" y="${y - 2.5}" width="18" height="5"/><rect class="plate" x="${x - 9}" y="${y - 7}" width="5" height="14"/><rect class="plate" x="${x + 4}" y="${y - 7}" width="5" height="14"/></g>`;
+    };
+
+    const boot = (k, far) => {
+      const a = T['a' + k], t = T['t' + k], dir = norm(sub(t, a)), nn = perp(dir);
+      const toe = add(t, mul(dir, 3)), heel = add(a, mul(dir, -4));
+      return poly([add(heel, mul(nn, 4)), add(toe, mul(nn, 2.5)), add(toe, mul(nn, -3.5)), add(heel, mul(nn, -4.5))], far ? 'r-boot far' : 'r-boot') +
+        (far ? '' : ln(add(heel, mul(nn, -4.5)), add(toe, mul(nn, -3.5)), 'r-sole'));
     };
     const leg = (k, far) => {
-      const pts = [T.hip, T['k' + k], T['a' + k], T['t' + k]];
-      return pl(pts, far ? 'cy-armor far' : 'cy-armor leg') + pl(pts.slice(0, 3), far ? 'cy-line far' : 'cy-line') +
-        (far ? '' : dot(T['k' + k], 4.5, 'cy-joint'));
+      const H = T.hip, K = T['k' + k], A = T['a' + k];
+      const b = far ? 'r-armor far' : 'r-armor', h = far ? null : 'r-hi';
+      let o = capsule(H, K, 19, 13, b, h) + capsule(K, A, 13, 9.5, b, h) + boot(k, far);
+      // neon szegély a sípcsonton, térdvédő
+      const kd = norm(sub(A, K));
+      o += ln(add(K, mul(kd, 8)), add(A, mul(kd, -6)), far ? 'r-trim far' : 'r-trim');
+      if (!far) o += circ(K, 5.2, 'r-pad') + circ(K, 2, 'r-led');
+      return o;
     };
     const arm = (k, far) => {
-      const pts = [T.sho, T['e' + k], T['w' + k]];
-      return pl(pts, far ? 'cy-armor far arm' : 'cy-armor arm') + pl(pts, far ? 'cy-line far' : 'cy-line') +
-        dot(T['w' + k], far ? 4 : 5, far ? 'cy-fist far' : 'cy-fist');
+      const S = T.sho, E = T['e' + k], W = T['w' + k];
+      const b = far ? 'r-armor far' : 'r-armor', h = far ? null : 'r-hi';
+      let o = capsule(S, E, 13.5, 10.5, b, h) + capsule(E, W, 10.5, 9, b, h);
+      const wd = norm(sub(W, E));
+      o += ln(add(E, mul(wd, 5)), add(W, mul(wd, -3)), far ? 'r-trim far' : 'r-trim');   // alkarvért fénycsík
+      o += circ(add(W, mul(wd, 3)), far ? 4.5 : 5.2, far ? 'r-glove far' : 'r-glove');
+      if (!far) o += circ(E, 2, 'r-led');
+      return o;
     };
-    // távoli oldal
+
+    // --- távoli oldal ---
     s += leg('f', true) + arm('f', true);
     props.filter(p => p.far).forEach(p => { s += drawProp(p); });
-    // katana a háton (hüvelyben), a markolat a váll fölött
-    const sa = P(T.hip, 15, n, [d, -10]), sb = P(T.sho, 15, n, [d, 12]), hilt = add(sb, mul(d, 17));
-    s += line(sa, sb, 'cy-scab') + line(sa, sb, 'cy-blade') + line(sb, hilt, 'cy-hilt') +
-      line(add(sb, mul(n, 6)), add(sb, mul(n, -6)), 'cy-guard');
-    // törzs: páncél, mellvért-csík, öv
-    s += `<path class="cy-torso" d="M${pt(T.hip)} Q${pt(T.ctl)} ${pt(T.neck)}"/>`;
-    s += line(P(T.hip, 8, f, [d, 12]), P(T.sho, 8, f, [d, -2]), 'cy-chest');
-    s += line(P(T.hip, 11, n), P(T.hip, 11, f), 'cy-belt');
-    // sisak: kör, világító vizor, V-alakú taréj
-    s += dot(T.head, 12.5, 'cy-helm');
-    s += line(P(T.head, 1, u, [face, 1]), P(T.head, 1, u, [face, 12]), 'cy-visor');
-    const crown = P(T.head, 11, u);
-    s += line(crown, P(crown, 9, u, [face, 9]), 'cy-crest') + line(crown, P(crown, 8, u, [face, -7]), 'cy-crest');
-    // közeli oldal
+
+    // --- övről lógó szalag (gravitáció + lebegés) ---
+    const sashA = add(T.hip, mul(back, 9));
+    const sash = [sashA];
+    for (let i = 1; i <= 4; i++) {
+      const prev = sash[i - 1], sw = Math.sin(clock * 3.2 + i * 0.9) * 1.6 * i / 4;
+      sash.push(add(prev, [mul(back, 2.2)[0] + sw, 5.2 + mul(back, 2.2)[1] * 0.3]));
+    }
+    s += pl(sash, 'r-sash');
+
+    // --- katana a háton ---
+    const sa = add(add(T.hip, mul(back, 15)), mul(d, -12)), sb = add(add(T.sho, mul(back, 15)), mul(d, 12));
+    const hilt = add(sb, mul(d, 18));
+    s += ln(sa, sb, 'r-scab') + ln(add(sa, mul(front, 2.2)), add(sb, mul(front, 2.2)), 'r-scab-edge');
+    s += ln(sb, hilt, 'r-hilt');
+    for (let i = 1; i <= 3; i++) s += ln(add(add(sb, mul(d, i * 4.5)), mul(back, 2.8)), add(add(sb, mul(d, i * 4.5 + 2)), mul(back, -2.8)), 'r-wrap');
+    s += ln(add(sb, mul(back, 6)), add(sb, mul(back, -6)), 'r-guard');
+
+    // --- törzs: alakos páncél a gerincív mentén ---
+    const B = t => { const a = (1 - t) * (1 - t), b2 = 2 * (1 - t) * t, c = t * t;
+      return [a * T.hip[0] + b2 * T.ctl[0] + c * T.neck[0], a * T.hip[1] + b2 * T.ctl[1] + c * T.neck[1]]; };
+    const BT = t => norm([2 * (1 - t) * (T.ctl[0] - T.hip[0]) + 2 * t * (T.neck[0] - T.ctl[0]), 2 * (1 - t) * (T.ctl[1] - T.hip[1]) + 2 * t * (T.neck[1] - T.ctl[1])]);
+    const prof = [[0, 13, 13], [.3, 11.5, 11], [.55, 14.5, 12], [.8, 17.5, 14], [.93, 15, 13], [1, 7, 7]];
+    const fr = [], bk = [];
+    prof.forEach(([t, wf, wb]) => { const c = B(t), tg = BT(t), bn = [tg[1], -tg[0]];
+      fr.push(add(c, mul(bn, -wf))); bk.push(add(c, mul(bn, wb))); });
+    s += poly(fr.concat(bk.reverse()), 'r-torso');
+    // mellvért (felső, elülső rész), fénycsík a gerinc mentén
+    const chest = [.5, .62, .78, .9].map((t, i) => { const c = B(t), tg = BT(t), bn = [tg[1], -tg[0]]; return [add(c, mul(bn, -[12, 13.5, 15, 13][i] + 1.5)), add(c, mul(bn, 2))]; });
+    s += poly(chest.map(p => p[0]).concat(chest.map(p => p[1]).reverse()), 'r-plate');
+    s += pl([.55, .8, .92].map((t, i) => { const c = B(t), tg = BT(t), bn = [tg[1], -tg[0]]; return add(c, mul(bn, [-13.5, -16.5, -14][i])); }), 'r-edge');
+    // reaktor-mag a mellkason
+    { const c = B(.72), tg = BT(.72), bn = [tg[1], -tg[0]], core = add(c, mul(bn, -6));
+      s += circ(core, 4.2, 'r-core-ring') + circ(core, 2.2 + Math.sin(clock * 4) * .4, 'r-core'); }
+    // öv (obi)
+    { const c = B(.08), tg = BT(.08), bn = [tg[1], -tg[0]];
+      s += poly([add(add(c, mul(bn, -14)), mul(tg, 4.5)), add(add(c, mul(bn, 14)), mul(tg, 4.5)), add(add(c, mul(bn, 14)), mul(tg, -4)), add(add(c, mul(bn, -14)), mul(tg, -4))], 'r-belt');
+      s += circ(add(c, mul(bn, -6)), 2.4, 'r-buckle'); }
+
+    // --- fej: sisak, maszk, vizor, nyakvédő, taréj, lobogó fejpánt ---
+    const Hc = T.head, R = 12;
+    const bw = mul(fc, -1);
+    // nyakvédő lemezek (shikoro)
+    s += poly([add(Hc, add(mul(bw, 6), mul(up, 2))), add(Hc, add(mul(bw, 15), mul(up, -6))), add(Hc, add(mul(bw, 12), mul(up, -11))), add(Hc, add(mul(bw, 2), mul(up, -9)))], 'r-shikoro');
+    // fejpánt szalagok
+    for (let j = 0; j < 2; j++) {
+      const base = add(Hc, add(mul(bw, 11), mul(up, 3 - j * 3)));
+      const tail = [base];
+      for (let i = 1; i <= 4; i++) {
+        const pv = tail[i - 1], wv = Math.sin(clock * 5 + i * 1.1 + j * 1.7) * 1.8;
+        tail.push(add(pv, [mul(bw, 4.5)[0] + perp(bw)[0] * wv, mul(bw, 4.5)[1] + 1.6 + perp(bw)[1] * wv]));
+      }
+      s += pl(tail, j ? 'r-band thin' : 'r-band');
+    }
+    s += circ(Hc, R, 'r-helm');
+    // sisak felső fénye
+    s += `<path class="r-helm-hi" d="M${F(Hc[0] + LIGHT[0] * 3 - 6)},${F(Hc[1] + LIGHT[1] * 6)} a9,9 0 0 1 ${F(9)},${F(-5)}"/>`;
+    // arcmaszk (elöl-lent) és vizor
+    s += poly([add(Hc, add(mul(fc, 3), mul(up, 2))), add(Hc, add(mul(fc, 13.5), mul(up, 2))), add(Hc, add(mul(fc, 11), mul(up, -8))), add(Hc, add(mul(fc, 2), mul(up, -11)))], 'r-mask');
+    s += poly([add(Hc, add(mul(fc, 3), mul(up, 2.2))), add(Hc, add(mul(fc, 14), mul(up, 2.2))), add(Hc, add(mul(fc, 13.5), mul(up, -1.4))), add(Hc, add(mul(fc, 3), mul(up, -1.4)))], 'r-visor');
+    // taréj (maedate) + ékkő
+    const fh = add(Hc, add(mul(up, 10), mul(fc, 3)));
+    s += pl([add(fh, add(mul(up, 9), mul(fc, 11))), fh, add(fh, add(mul(up, 9), mul(fc, -7)))], 'r-crest');
+    s += circ(fh, 2.6, 'r-jewel');
+
+    // --- közeli oldal ---
     s += leg('n', false);
     s += arm('n', false);
-    s += `<rect class="cy-pauldron" x="${(T.sho[0] - 8).toFixed(1)}" y="${(T.sho[1] - 7).toFixed(1)}" width="16" height="12" rx="2"/>`;
-    s += dot(T.en, 4, 'cy-joint');
+    // vállvért (sode) a váll körül, a felkar irányába dőlve
+    { const ad = norm(sub(T.en, T.sho)), an = perp(ad), c = add(T.sho, mul(ad, 4));
+      s += poly([add(c, add(mul(an, 10), mul(ad, -7))), add(c, add(mul(an, 11), mul(ad, 9))), add(c, add(mul(an, -11), mul(ad, 9))), add(c, add(mul(an, -10), mul(ad, -7)))], 'r-sode');
+      s += ln(add(c, add(mul(an, 11), mul(ad, 9))), add(c, add(mul(an, -11), mul(ad, 9))), 'r-sode-edge'); }
     props.filter(p => !p.far).forEach(p => { s += drawProp(p); });
     return s;
   }
@@ -210,13 +299,16 @@ const FIG = (() => {
     // 8 bites hatás: SVG-szűrő mintavételez és kockákra nagyít (kb. 64 „pixel” széles kép)
     if (!svg.dataset.fid) svg.dataset.fid = 'pxf' + (++fidSeq);
     const fid = svg.dataset.fid;
-    const P = +(bb.w / 88).toFixed(2), x = bb.x.toFixed(1), y = bb.y.toFixed(1);
+    const P = +(bb.w / 104).toFixed(2), x = bb.x.toFixed(1), y = bb.y.toFixed(1);
     const pix = (typeof document !== 'undefined' && document.documentElement.dataset.pixel === 'off') ? '' :
       `<defs><filter id="${fid}" filterUnits="userSpaceOnUse" x="${x}" y="${y}" width="${bb.w.toFixed(1)}" height="${bb.h.toFixed(1)}">` +
       `<feFlood x="${(+x + P / 2).toFixed(2)}" y="${(+y + P / 2).toFixed(2)}" width="1" height="1" flood-color="#fff"/>` +
       `<feComposite x="${x}" y="${y}" width="${P}" height="${P}"/><feTile result="grid"/>` +
       `<feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="${(P / 2).toFixed(2)}"/></filter></defs>`;
-    svg.innerHTML = pix ? pix + `<g filter="url(#${fid})">` + draw(ex, place(ex, poseAt(ex, u))) + '</g>' : draw(ex, place(ex, poseAt(ex, u)));
+    const fast = (ex.dur || 2.4) <= 1.8 && !(svg.closest && svg.closest('.rest-mode'));
+    const body = (fast ? `<g class="r-ghost">${draw(ex, place(ex, poseAt(ex, (u + 0.93) % 1)), true)}</g><g class="r-ghost g2">${draw(ex, place(ex, poseAt(ex, (u + 0.965) % 1)), true)}</g>` : '') +
+      draw(ex, place(ex, poseAt(ex, u)));
+    svg.innerHTML = pix ? pix + `<g filter="url(#${fid})">` + body + '</g>' : body;
   }
 
   // A ctl pont a csípőhöz relatív: place() eltolja, ezért itt korrigálunk

@@ -1,5 +1,5 @@
 /* Napi edzés – service worker (offline cache). Relatív útvonalak: bármely almappából működik. */
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const CACHE = 'napi-edzes-' + VERSION;
 
 const PRECACHE = [
