@@ -722,7 +722,7 @@ function applyUpdate() {
   else { reloading = true; location.reload(); }
 }
 function initSW() {
-  if (!('serviceWorker' in navigator)) return;
+  if (window.NO_SW || !('serviceWorker' in navigator)) return;
   const h = location.hostname;
   if (!(location.protocol === 'https:' || h === 'localhost' || h === '127.0.0.1')) return;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
