@@ -11,9 +11,24 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
-const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon' });
+const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon', gear: { kb: 20, db: 15 } });
+/* Eszközeim: kb = kettlebell súlya (0 = nincs), db = kézisúlyzó max súlya / kéz (0 = nincs). Bővíthető (pl. gumiszalag). */
+const KB_OPTS = [0, 8, 12, 16, 20, 24, 32], DB_OPTS = [0, 5, 8, 10, 12, 15, 20, 25];
+const gear = () => Object.assign({ kb: 20, db: 15 }, ST.set.gear || {});
+const plusOk = k => (k !== 'ero' || gear().db > 0) && (k !== 'kondi' || gear().kb > 0);
+const plusList = () => PLUS_ORDER.filter(plusOk);
+const plusCycle = () => { const c = PLUS_CYCLE.filter(plusOk); return c.length ? c : ['core']; };
+const plusGear = k => k === 'kondi' ? gear().kb + ' kg kettlebell' : k === 'ero' ? 'kézisúlyzó' + (gear().kb ? ' + kettlebell' : '') : PLUS[k].gear;
+// súlyjavaslat a saját eszközhöz igazítva (a kettlebell a megadott súly; a kézisúlyzós javaslat nem lépi túl a maxot)
+function kgText(ex) {
+  if (!ex.kg) return '';
+  const g = gear();
+  if (/kettlebell/.test(ex.kg)) return g.kb ? g.kb + ' kg kettlebell' : Math.min(12, g.db) + ' kg kézisúlyzó (két kézzel)';
+  let t = ex.kg.replace(/\d+/g, n => String(Math.min(+n, g.db)));
+  return t.replace(/(\d+)–\1(?!\d)/g, '$1');
+}
 const CHARS = [['neon', 'Neon', 'kiberpunk lány'], ['shade', 'Shade', 'szamurájsisakos'], ['katana', 'Katana', 'kiborg, kard a hátán'], ['ronin', 'Ronin', 'kiborg műkarral']];
 const setChar3d = () => { try { window.FIG3D && FIG3D.setChar && FIG3D.setChar(ST.set.char || 'neon'); } catch (e) {} };
 const def = () => ({ v: 1, level: 1, levelSince: dayKey(), log: [], set: defSet(), plusPtr: 0, updatedAt: 0 });
@@ -32,7 +47,7 @@ const nextType = () => {
   return 'A';
 };
 const lastPain = () => { const l = ST.log[ST.log.length - 1]; return !!(l && l.r === 'faj'); };
-const recPlus = () => lastPain() ? 'mob' : PLUS_CYCLE[ST.plusPtr % PLUS_CYCLE.length];
+const recPlus = () => lastPain() ? 'mob' : plusCycle()[ST.plusPtr % plusCycle().length];
 const plusMins = (type, level, plus) => totalSec(buildSteps(type, level, plus)) - totalSec(buildSteps(type, level, null));
 const logLabel = e => e.type === 'P' ? 'Csak plusz: ' + (PLUS[e.plus] ? PLUS[e.plus].short : 'blokk')
   : (BASE[e.type] ? BASE[e.type].short : 'Korábbi edzés') + (e.plus && PLUS[e.plus] ? ' + ' + PLUS[e.plus].short : '');
@@ -67,6 +82,7 @@ let pick = null, pickPlus = null;   // pickPlus: null = ajánlott, 'none' = csak
 function renderHome() {
   const type = pick || nextType(), nt = nextType();
   const rec = recPlus();
+  if (pickPlus && pickPlus !== 'none' && !plusOk(pickPlus)) pickPlus = null;
   const plus = pickPlus === null ? rec : (pickPlus === 'none' ? null : pickPlus);
   const steps = buildSteps(type, ST.level, plus), tot = totalSec(steps);
   const baseTot = totalSec(buildSteps(type, ST.level, null));
@@ -93,7 +109,7 @@ function renderHome() {
       plan += `<h3>${h}</h3>`;
     }
     if (s.round > 1) return;
-    plan += `<button data-jump="${i}"><span>${esc(EX[s.ex].name)}${s.sided ? ' <span class="muted">(2 oldal)</span>' : ''}${EX[s.ex].kg ? `<br><span class="muted">${esc(EX[s.ex].kg)}</span>` : ''}</span><span class="num">${s.dur} mp</span></button>`;
+    plan += `<button data-jump="${i}"><span>${esc(EX[s.ex].name)}${s.sided ? ' <span class="muted">(2 oldal)</span>' : ''}${EX[s.ex].kg ? `<br><span class="muted">${esc(kgText(EX[s.ex]))}</span>` : ''}</span><span class="num">${s.dur} mp</span></button>`;
   });
 
   const log = ST.log.map((e, i) => [e, i]).slice(-15).reverse().map(([e, i]) => {
@@ -133,17 +149,17 @@ function renderHome() {
     <p class="muted" style="margin:0">Az alap a kötelező rész: eszköz nélkül, bárhol megy. Az A és a B felváltva jön (a pötty jelöli a következőt).</p>
     <h3 class="subhead">Plusz blokk az alap kör után</h3>
     <div class="chips three" role="group" aria-label="Plusz blokk">
-      ${PLUS_ORDER.map(k => `<button class="chip${k === rec ? ' next' : ''}" data-plus="${k}" aria-pressed="${k === plus}"><b>${esc(PLUS[k].short)}</b><span>~${Math.round(plusMins(type, ST.level, k) / 60)} perc</span></button>`).join('')}
+      ${plusList().map(k => `<button class="chip${k === rec ? ' next' : ''}" data-plus="${k}" aria-pressed="${k === plus}"><b>${esc(PLUS[k].short)}</b><span>~${Math.round(plusMins(type, ST.level, k) / 60)} perc</span></button>`).join('')}
       <button class="chip" data-plus="none" aria-pressed="${plus === null}"><b>Nincs</b><span>csak alap</span></button>
     </div>
-    <p class="muted" style="margin:0">${plus ? `${esc(PLUS[plus].name)} · ${esc(PLUS[plus].gear)}. ` : ''}${lastPain() && rec === 'mob' ? 'Legutóbb fájt valami, ezért ma a mobilitást ajánlom. ' : 'A pötty az ajánlott blokkot jelöli. '}Az alap kör végén még meggondolhatod.</p>
+    <p class="muted" style="margin:0">${plus ? `${esc(PLUS[plus].name)} · ${esc(plusGear(plus))}. ` : ''}${lastPain() && rec === 'mob' ? 'Legutóbb fájt valami, ezért ma a mobilitást ajánlom. ' : 'A pötty az ajánlott blokkot jelöli. '}Az alap kör végén még meggondolhatod.</p>
   </section>
 
   <section class="card">
     <div class="row"><h2 style="font-size:22px">Csak egy plusz blokk</h2><span class="muted">alap nélkül</span></div>
     <p class="muted" style="margin:0">Önállóan indítható, rövid bemelegítéssel és nyújtással, kb. 9–10 perc. Jó például délután egy második, rövid edzésnek.</p>
     <div class="chips three" role="group" aria-label="Plusz blokk önállóan">
-      ${PLUS_ORDER.map(k => `<button class="chip" data-solo="${k}"><b>${esc(PLUS[k].short)}</b><span>~${Math.round(totalSec(buildPlusOnly(k, ST.level)) / 60)} perc</span></button>`).join('')}
+      ${plusList().map(k => `<button class="chip" data-solo="${k}"><b>${esc(PLUS[k].short)}</b><span>~${Math.round(totalSec(buildPlusOnly(k, ST.level)) / 60)} perc</span></button>`).join('')}
     </div>
   </section>
 
@@ -180,6 +196,11 @@ function renderHome() {
        ['wake', 'Kijelző ébren tartása', 'Edzés közben nem alszik el a telefon.']]
       .map(([k, l, d]) => `<div class="set"><label for="set-${k}">${l}<small>${d}</small></label><input type="checkbox" class="switch" id="set-${k}" data-set="${k}" ${ST.set[k] ? 'checked' : ''}></div>`).join('')}
     <p class="muted" style="margin:0">Az adataid csak ezen a telefonon tárolódnak. Készíts rendszeresen mentést.</p>
+    <div class="set"><label>Eszközeim<small>Ami otthon van. Ehhez igazodnak a plusz blokkok és a súlyjavaslatok.</small></label></div>
+    <div class="gear">
+      <label for="gearKb">Kettlebell<select id="gearKb" class="bktext">${KB_OPTS.map(v => `<option value="${v}" ${gear().kb === v ? 'selected' : ''}>${v ? v + ' kg' : 'nincs'}</option>`).join('')}</select></label>
+      <label for="gearDb">Kézisúlyzó (max / kéz)<select id="gearDb" class="bktext">${DB_OPTS.map(v => `<option value="${v}" ${gear().db === v ? 'selected' : ''}>${v ? v + ' kg' : 'nincs'}</option>`).join('')}</select></label>
+    </div>
     <div class="set music"><label for="musicUrl">Zene: Spotify lejátszási lista<small>A „Zene” gomb ezt nyitja meg a Spotify appban. Bármelyik lista linkjét beillesztheted (Spotify: Megosztás → Link másolása).</small></label></div>
     <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="musicUrl" class="bktext" style="min-height:0;height:44px;resize:none;flex:1" value="${esc(musicUrl())}" inputmode="url" autocomplete="off"><button class="btn small" id="musicSave">Mentés</button></div>
     <p class="muted version" style="margin:0">Verzió: ${APP_VERSION}</p>
@@ -214,7 +235,7 @@ function renderHome() {
         <li>A szintek a gyakorlatokat nehezítik, az alap ideje marad kb. 16 perc. Szintlépés: ${LEVEL_UP.good} „könnyű” vagy „pont jó” értékelésű, teljes alap edzés és legalább ${LEVEL_UP.days / 7} hét az adott szinten. Kézzel is válthatsz.</li>
         <li>Edzés közben bármikor visszaléphetsz, újrakezdheted a gyakorlatot, vagy a Lista gombbal bárhová ugorhatsz.</li>
       </ul></details>
-    <details><summary>Súlyválasztás (állítható kézisúlyzó, 20 kg kettlebell)</summary>
+    <details><summary>Súlyválasztás (${esc([gear().db ? 'kézisúlyzó max. ' + gear().db + ' kg' : '', gear().kb ? gear().kb + ' kg kettlebell' : ''].filter(Boolean).join(', ') || 'eszköz nélkül')})</summary>
       <ul>
         <li>Minden súlyzós gyakorlatnál ott a javasolt kezdősúly. Az első héten inkább a könnyebb végét válaszd, és a technikára figyelj.</li>
         <li>Akkor jó a terhelés, ha a munkaidő végén még kb. 2 tiszta ismétlés maradna benned.</li>
@@ -264,6 +285,8 @@ function renderHome() {
   document.querySelectorAll('[data-plus]').forEach(b => b.onclick = () => { const v = b.dataset.plus; pickPlus = v === rec ? null : v; renderHome(); });
   document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => start(type, +b.dataset.jump, ST.level, plus));
   document.querySelectorAll('[data-set]').forEach(c => c.onchange = () => { ST.set[c.dataset.set] = c.checked; save(); });
+  ['gearKb', 'gearDb'].forEach(id => { const el = $('#' + id); if (el) el.onchange = () => {
+    ST.set.gear = Object.assign(gear(), { [id === 'gearKb' ? 'kb' : 'db']: +el.value }); save(); renderHome(); }; });
   if ($('#resume')) { $('#resume').onclick = () => start(run.type, run.idx, run.level || ST.level, run.plus || null, run.vis); $('#drop').onclick = () => { clearRun(); renderHome(); }; }
   $('#lvDown').onclick = () => askLevel(ST.level - 1);
   $('#lvUp').onclick = () => askLevel(ST.level + 1);
@@ -568,7 +591,7 @@ function enterStep(quiet) {
   $('#player').classList.toggle('rest-mode', s.kind !== 'work');
   const phase = { work: s.part === 'base' || s.part === 'plus' ? 'MUNKA' : s.sec.toUpperCase(), rest: 'PIHENŐ', trans: 'KÖVETKEZIK', prep: 'KÉSZÜLJ' }[s.kind];
   const ph = $('#pPhase'); ph.textContent = phase; ph.className = 'phase' + (s.kind === 'rest' ? ' rest' : s.kind === 'work' ? '' : ' trans');
-  $('#pName').innerHTML = esc(ex.name) + (ex.kg ? `<div class="kg">${esc(ex.kg)}</div>` : '');
+  $('#pName').innerHTML = esc(ex.name) + (ex.kg ? `<div class="kg">${esc(kgText(ex))}</div>` : '');
   const workNo = R.steps.slice(0, R.idx + 1).filter(x => x.kind === 'work').length + (s.kind === 'work' ? 0 : 1);
   $('#pSec').textContent = s.sec + (s.round ? ` · ${s.round}/${s.rounds}. kör` : '');
   $('#pWhere').textContent = `${Math.min(workNo, R.workTotal)}/${R.workTotal}. gyakorlat · ${sessLabel(R.type, R.plus)} · ${R.level}. szint`;
@@ -590,7 +613,7 @@ function offerPlus() {
   paint();
   beep('end'); vib([150, 80, 150]); speak('Az alap kész. Jöhet a plusz blokk?');
   const cur = R.plus, mins = k => Math.round(plusMins(R.type, R.level, k) / 60);
-  const others = PLUS_ORDER.filter(k => k !== cur);
+  const others = plusList().filter(k => k !== cur);
   sheet(`<h2>Az alap kész ✓</h2>
     <p class="muted" style="margin:0">Ez volt a kötelező rész, ez már teljes edzésnek számít. Jöhet a plusz blokk, vagy mehetsz a nyújtásra.</p>
     <div class="btns">
@@ -598,7 +621,7 @@ function offerPlus() {
       <button class="btn" id="shSkip">Kihagyom, jöhet a nyújtás</button>
     </div>
     <h3 class="subhead">Vagy válassz másikat</h3>
-    <div class="btns altlist">${others.map(k => `<button class="btn small" data-alt="${k}">${esc(PLUS[k].name)} <span class="muted">· ~${mins(k)} perc · ${esc(PLUS[k].gear)}</span></button>`).join('')}</div>`, {
+    <div class="btns altlist">${others.map(k => `<button class="btn small" data-alt="${k}">${esc(PLUS[k].name)} <span class="muted">· ~${mins(k)} perc · ${esc(plusGear(k))}</span></button>`).join('')}</div>`, {
     shYes: () => { closeSheet(); resumeAfterOffer(); },
     shSkip: () => { closeSheet(); setPlus(null); resumeAfterOffer(); }
   });
@@ -723,7 +746,7 @@ function finish(partial) {
   const plusDone = R.plus && doneShare('plus') >= 0.75 ? R.plus : null;
   const entry = { d: new Date().toISOString(), type: R.type, lvl: R.level, sec, r: null, plus: plusDone };
   if (!full) entry.part = true;
-  if (plusDone && plusDone === PLUS_CYCLE[(ST.plusPtr || 0) % PLUS_CYCLE.length]) { ST.plusPtr = (ST.plusPtr || 0) + 1; entry.ptr = true; }
+  if (plusDone && plusDone === plusCycle()[(ST.plusPtr || 0) % plusCycle().length]) { ST.plusPtr = (ST.plusPtr || 0) + 1; entry.ptr = true; }
   ST.log.push(entry); save();
   if (!partial) { beep('done'); vib([200, 100, 200]); speak('Kész! Szép munka.'); }
   const p = $('#player'); p.classList.remove('rest-mode');

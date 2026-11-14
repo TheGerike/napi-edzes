@@ -256,3 +256,6 @@ details.card.fold details { border-top: 1px dashed var(--line); }
 .charpick .chip.charchip b { font-size: 11px; line-height: 1.4; }
 .charpick .chip.charchip img { margin-bottom: 2px; }
 .charpick h2 { font-size: 16px !important; margin: 0; }
+.gear { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gear label { display: grid; gap: 4px; font-size: 16px; }
+.gear select { min-height: 44px; height: 44px; padding: 0 8px; font-size: 18px; }
