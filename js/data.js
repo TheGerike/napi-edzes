@@ -304,6 +304,15 @@ EX.hasony = {
   cues: ['Hason, karok előre Y alakban, hüvelykujj felfelé', 'Emeld meg a karokat és a mellkast pár centire, lapockák hátra és le', 'Tekintet a talajon, nyak hosszú; fent 2 mp tartás'],
   easy: 'Csak a karokat emeld, a mellkas maradjon a talajon'
 };
+EX.lehuzas = {
+  name: 'Hason lehúzás', dur: 3.4, hold: 0.3, anch: 'an',
+  frames: [
+    { t: 100, hd: 106, l: [[-90, -90], [-89, -89]], a: [[126, 126], [124, 124]], fo: [-90, -90] },
+    { t: 102, hd: 108, l: [[-90, -90], [-89, -89]], a: [[262, 132], [260, 130]], fo: [-90, -90] }
+  ],
+  cues: ['Hason, karok előre, egy törölközőt feszítve széthúzol (vagy ökölbe szorított kézzel)', 'Mellkas pár centire fel, húzd le a könyököket a derék felé W alakba, mintha húzódzkodnál', 'Lent 2 mp lapockaszorítás, lassan vissza'],
+  easy: 'Mellkas a talajon, csak a karok dolgoznak'
+};
 EX.egylabascsipo = {
   name: 'Egylábas csípőemelés', sided: true, dur: 2.8, anch: 'an',
   frames: [
@@ -385,8 +394,8 @@ const BASE = {
     title: 'Alap A · guggolás, nyomás, hát', short: 'Alap A',
     levels: {
       1: { work: 35, rest: 20, rounds: 2, st: ['guggolas', 'terdfekvo', 'hasony', 'plank'] },
-      2: { work: 40, rest: 15, rounds: 2, st: ['guggolas_tempo', 'fekvo', 'hasony', 'plank'] },
-      3: { work: 45, rest: 10, rounds: 2, st: ['bolgar_ts', 'fekvo_lassu', 'hasony', 'vallerintes'] }
+      2: { work: 40, rest: 15, rounds: 2, st: ['guggolas_tempo', 'fekvo', 'lehuzas', 'plank'] },
+      3: { work: 45, rest: 10, rounds: 2, st: ['bolgar_ts', 'fekvo_lassu', 'lehuzas', 'vallerintes'] }
     }
   },
   B: {

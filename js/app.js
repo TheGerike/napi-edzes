@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.8.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon', gear: { kb: 20, db: 15 } });
 /* Eszközeim: kb = kettlebell súlya (0 = nincs), db = kézisúlyzó max súlya / kéz (0 = nincs). Bővíthető (pl. gumiszalag). */
@@ -119,7 +119,7 @@ function renderHome() {
 
   const runName = run ? (EX[(stepsFor(run.type, run.level || ST.level, run.plus || null)[run.idx] || {}).ex] || {}).name : '';
   $('#home').innerHTML = `
-  <div class="top"><h1>NeonRep</h1><span class="date">${esc(dateTxt)}</span></div>
+  <div class="top"><h1>16BX</h1><span class="date">${esc(dateTxt)}</span></div>
   <section class="card charpick" aria-labelledby="charH">
     <h2 id="charH">Az edződ</h2>
     <div class="chars" role="group" aria-label="Edző karakter">
@@ -220,6 +220,11 @@ function renderHome() {
   </div></details>
 
 <details class="card fold" data-fold="info" ${foldOpen("info")}><summary><h2>Tudnivalók</h2></summary><div class="foldbody">
+    <details><summary>Miért 16BX?</summary>
+      <ul>
+        <li>Az 1950-es évek kanadai légierős programjainak örököse: az 5BX (5 gyakorlat, férfiaknak) és az XBX (10 gyakorlat, nőknek) napi pár percben edzette a szolgálatot. A 16BX ugyanez mai tudással: 16 gyakorlat, eszköz nélkül, kb. 16 perc.</li>
+        <li>Lefedi az alap mozgásmintákat: guggolás, csípőzsanér, kitörés, nyomás, húzás, törzs és mobilitás.</li>
+      </ul></details>
     <details><summary>A karakterek forrása</summary>
       <ul>
         <li><b>Neon:</b> „Character Cyberpunk FREE 3d”, készítette OSCAR CREATIVO (sketchfab.com/oscar_creativo), CC BY-NC 4.0 licenc. Átalakítva: fegyverek nélkül, telefonra optimalizálva.</li>
@@ -255,6 +260,7 @@ function renderHome() {
         <li><b>Lépés:</b> napi minimum 8 ezer. Ha egy nap ülős (iroda, autó), ebéd vagy vacsora után 15 perc séta.</li>
         <li><b>Tempós séta heti 3×30–45 perc</b>, emelkedővel. Pulzus kb. 120–135, még beszélni tudsz, de énekelni már nem. Ez emeli leginkább a VO2max-ot.</li>
         <li>A napi 16 perces alap és a plusz blokk főleg erőt, mozgékonyságot és szokást épít. A fogyást a séta és az étkezés viszi, fehérjével minden főétkezésnél.</li>
+        <li><b>Napi 3× egy perc lendület:</b> lépcsőzz vagy sietve menj valahová, hogy kifulladj egy kicsit. Akár ennyi is mérhetően csökkenti a halálozási kockázatot azoknál, akik nem sportolnak.</li>
         <li>Apple Watch-on indíts „Funkcionális erőnléti edzés”-t az app mellett, sétánál „Szabadtéri séta”-t.</li>
       </ul></details>
     <details><summary>Mikor legyen könnyebb nap?</summary>
@@ -389,7 +395,7 @@ async function importFile(ev) {
 }
 
 function parseBackup(text, fromPaste) {
-  const bad = { error: fromPaste ? 'Ez nem érvényes NeonRep mentés. Ellenőrizd, hogy a teljes mentést illesztetted be.' : 'Ez nem érvényes NeonRep mentés. Ellenőrizd, hogy a jó fájlt választottad.' };
+  const bad = { error: fromPaste ? 'Ez nem érvényes 16BX mentés. Ellenőrizd, hogy a teljes mentést illesztetted be.' : 'Ez nem érvényes 16BX mentés. Ellenőrizd, hogy a jó fájlt választottad.' };
   let o;
   try { o = JSON.parse(String(text || '').trim()); } catch (e) { return bad; }
   if (!o || typeof o !== 'object' || Array.isArray(o)) return bad;
