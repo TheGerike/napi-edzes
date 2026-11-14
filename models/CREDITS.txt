@@ -13,3 +13,5 @@ katana.glb – "Cyborg with Thermal Katana" (https://sketchfab.com/3d-models/cyb
              Changes: pistol removed; katana moved to the back; mesh simplified; textures 512 px WebP; meshopt compression.
 motions/*.glb – Mozgásrögzítéses animációk (Air Squat, Air Squat Bent Arms, Push Up, Burpee, Jumping Jacks, Jab Cross) a Mixamo-ról (Adobe, https://www.mixamo.com),
              a Mixamo felhasználási feltételei szerint, az appba beépítve (önállóan nem terjesztve). FBX → glTF: FBX2glTF.
+motions/swing.glb – "Kettlebell full Swing" (https://sketchfab.com/3d-models/kettlebell-full-swing-d55150c8aadf4552a6aa9eb3085c7dc8)
+             by hanfletchie (https://sketchfab.com/hanfletchie), CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changes: mesh removed, skeleton animation only.

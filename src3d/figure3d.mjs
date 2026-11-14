@@ -103,7 +103,7 @@ const CHARS = {
 };
 const MODEL_DIR = (() => { const u = document.currentScript && document.currentScript.dataset.model; return u ? u.replace(/[^/]*$/, '') : 'models/'; })();
 let charId = 'neon', holder = null, loadSeq = 0, lastMocap = null, mocapChar = null;
-const norm = n => n.toLowerCase().replace(/^mixamorig:?/, '').replace(/_\d+$/, '').replace(/[\s_]+/g, '_');
+const norm = n => n.toLowerCase().replace(/^mixamorig\d*:?/, '').replace(/_\d+$/, '').replace(/[\s_]+/g, '_');
 
 function stylizeAndroid(root) {
   const armor = new THREE.MeshStandardMaterial({ color: 0x7c7aa6, roughness: .22, metalness: .92 });
@@ -232,7 +232,7 @@ const MOCAP = {
   guggolas: { clip: 'squat' }, guggolas_tempo: { clip: 'squat' },
   fekvo: { clip: 'pushup' }, fekvo_lassu: { clip: 'pushup' },
   burpee: { clip: 'burpee' }, arnyekbox: { clip: 'jab', natural: true },
-  terpesz: { clip: 'jacks', natural: true }, goblet: { clip: 'squatbent' }, goblet_tempo: { clip: 'squatbent' }
+  terpesz: { clip: 'jacks', natural: true }, swing: { clip: 'swing', natural: true }, swing1: { clip: 'swing', natural: true }, goblet: { clip: 'squatbent' }, goblet_tempo: { clip: 'squatbent' }
 };
 const motions = {};   // név → { root, mixer, dur, j: {kulcs: csont} } | 'loading' | 'fail'
 const MJ = { Hips: 'hips', Spine: 'spine', Spine1: 'spine1', Spine2: 'spine2', Neck: 'neck', Head: 'head',
@@ -391,7 +391,7 @@ function draw(el, ex, T, bb, u) {
   if (lastEx !== ex) { frameCamera(bb); lastEx = ex; lastMocap = null; }
   if (model) {
     T.__anch = ex.anch || 'an';
-    const mc = ex.__id !== undefined ? MOCAP[ex.__id] : null;
+    const mc = ex.__id !== undefined ? ((window.MOCAP_OVERRIDE || {})[ex.__id] || MOCAP[ex.__id]) : null;
     let m = null;
     if (mc) { if (!motions[mc.clip]) loadMotion(mc.clip); if (typeof motions[mc.clip] === 'object') m = motions[mc.clip]; }
     if (m) {

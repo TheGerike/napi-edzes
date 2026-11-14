@@ -21,6 +21,7 @@ const PRECACHE = [
   'models/motions/jab.glb',
   'models/motions/jacks.glb',
   'models/motions/squatbent.glb',
+  'models/motions/swing.glb',
   'models/neon.glb',
   'models/ronin.glb',
   'models/shade.glb',

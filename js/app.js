@@ -201,7 +201,7 @@ function renderHome() {
     <details><summary>A karakterek forrása</summary>
       <ul>
         <li><b>Neon:</b> „Character Cyberpunk FREE 3d”, készítette OSCAR CREATIVO (sketchfab.com/oscar_creativo), CC BY-NC 4.0 licenc. Átalakítva: fegyverek nélkül, telefonra optimalizálva.</li>
-        <li><b>Mozgások:</b> a guggolás, a goblet guggolás, a fekvőtámasz, a burpee, a terpeszugrás és az árnyékbox valódi emberről rögzített mozgás (Mixamo, Adobe); a többi gyakorlat a saját mozgásvázlatunkból készül.</li>
+        <li><b>Mozgások:</b> a guggolás, a goblet guggolás, a fekvőtámasz, a burpee, a terpeszugrás és az árnyékbox valódi emberről rögzített mozgás (Mixamo, Adobe); a kettlebell swing animációja „Kettlebell full Swing”, készítette hanfletchie (sketchfab.com/hanfletchie), CC BY 4.0 licenc; a többi gyakorlat a saját mozgásvázlatunkból készül.</li>
         <li><b>Ronin:</b> „Cyberpunk character”, készítette 4d_Bob (sketchfab.com/3d_Bob), CC BY 4.0 licenc. Telefonra optimalizálva.</li>
         <li><b>Shade:</b> „Shade of Neo-Tokyo”, készítette Moon dong hwa (sketchfab.com/moondonghwa), CC BY 4.0 licenc. Felirat nélkül, telefonra optimalizálva.</li>
         <li><b>Katana:</b> „Cyborg with Thermal Katana”, készítette SpatialNeglect (sketchfab.com/jeandiz), Sketchfab Free Standard licenc. Pisztoly nélkül, a kard a hátára került.</li>
