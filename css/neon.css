@@ -259,3 +259,13 @@ details.card.fold details { border-top: 1px dashed var(--line); }
 .gear { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .gear label { display: grid; gap: 4px; font-size: 16px; }
 .gear select { min-height: 44px; height: 44px; padding: 0 8px; font-size: 18px; }
+.langsel { min-height: 44px; height: 44px; padding: 0 8px; font-size: 18px; width: auto; }
+/* hosszabb (pl. angol) feliratok se feszítsék szét a rácsot */
+.chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.chips.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chips.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chip, .chip b, .chip span { min-width: 0; }
+.chip span { overflow-wrap: anywhere; }
+.chips .chip b { font-size: 12px; letter-spacing: -0.02em; }
+.charpick .chip.charchip b { font-size: 10px; letter-spacing: -0.03em; }
+#home { overflow-x: hidden; }

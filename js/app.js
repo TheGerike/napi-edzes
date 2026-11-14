@@ -11,7 +11,7 @@ const DOW = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const RATE = { konnyu: 'Könnyű', jo: 'Pont jó', nehez: 'Nehéz', faj: 'Fájt valami' };
 
 /* ================= ÁLLAPOT ================= */
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '2.7.0';
 const LS = 'napiEdzes.v1', LS_RUN = 'napiEdzes.run', LS_HIDE_INSTALL = 'napiEdzes.hideInstall';
 const defSet = () => ({ beep: true, voice: true, auto: true, wake: true, char: 'neon', gear: { kb: 20, db: 15 } });
 /* Eszközeim: kb = kettlebell súlya (0 = nincs), db = kézisúlyzó max súlya / kéz (0 = nincs). Bővíthető (pl. gumiszalag). */
@@ -93,7 +93,7 @@ function renderHome() {
   if (run && (run.pv !== 2 || Date.now() - run.savedAt > 6 * 3600e3 || (run.type === 'P' ? !PLUS[run.plus] : !BASE[run.type]) || (run.plus && !PLUS[run.plus]))) run = null;
   const P = S0.levels[ST.level];
   const now = new Date();
-  const dateTxt = now.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' });
+  const dateTxt = now.toLocaleDateString(I18N.locale, { month: 'long', day: 'numeric', weekday: 'long' });
 
   let plan = '', cur = null;
   steps.forEach((s, i) => {
@@ -114,12 +114,12 @@ function renderHome() {
 
   const log = ST.log.map((e, i) => [e, i]).slice(-15).reverse().map(([e, i]) => {
     const d = new Date(e.d);
-    return `<div><span>${d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })} · ${esc(logLabel(e))}${e.lvl ? ' · ' + e.lvl + '. szint' : ''}${e.part ? ' · részleges' : ''}<br><span class="muted">${minsTxt(e.sec)}${e.r ? ' · ' + RATE[e.r] : ''}</span></span><button class="btn small logdel" data-del="${i}" aria-label="Edzés törlése">Törlés</button></div>`;
+    return `<div><span>${d.toLocaleDateString(I18N.locale, { month: 'short', day: 'numeric' })} · ${esc(logLabel(e))}${e.lvl ? ' · ' + e.lvl + '. szint' : ''}${e.part ? ' · részleges' : ''}<br><span class="muted">${minsTxt(e.sec)}${e.r ? ' · ' + RATE[e.r] : ''}</span></span><button class="btn small logdel" data-del="${i}" aria-label="Edzés törlése">Törlés</button></div>`;
   }).join('') || '<p class="muted">Még nincs elvégzett edzés. Az első után itt látod a naplót.</p>';
 
   const runName = run ? (EX[(stepsFor(run.type, run.level || ST.level, run.plus || null)[run.idx] || {}).ex] || {}).name : '';
   $('#home').innerHTML = `
-  <div class="top"><h1>Napi edzés</h1><span class="date">${esc(dateTxt)}</span></div>
+  <div class="top"><h1>NeonRep</h1><span class="date">${esc(dateTxt)}</span></div>
   <section class="card charpick" aria-labelledby="charH">
     <h2 id="charH">Az edződ</h2>
     <div class="chars" role="group" aria-label="Edző karakter">
@@ -201,6 +201,7 @@ function renderHome() {
       <label for="gearKb">Kettlebell<select id="gearKb" class="bktext">${KB_OPTS.map(v => `<option value="${v}" ${gear().kb === v ? 'selected' : ''}>${v ? v + ' kg' : 'nincs'}</option>`).join('')}</select></label>
       <label for="gearDb">Kézisúlyzó (max / kéz)<select id="gearDb" class="bktext">${DB_OPTS.map(v => `<option value="${v}" ${gear().db === v ? 'selected' : ''}>${v ? v + ' kg' : 'nincs'}</option>`).join('')}</select></label>
     </div>
+    <div class="set"><label for="langSel">Nyelv<small>A felület és a felolvasás nyelve.</small></label><select id="langSel" class="bktext langsel"><option value="hu" ${I18N.lang === 'hu' ? 'selected' : ''}>Magyar</option><option value="en" ${I18N.lang === 'en' ? 'selected' : ''}>English</option></select></div>
     <div class="set music"><label for="musicUrl">Zene: Spotify lejátszási lista<small>A „Zene” gomb ezt nyitja meg a Spotify appban. Bármelyik lista linkjét beillesztheted (Spotify: Megosztás → Link másolása).</small></label></div>
     <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="musicUrl" class="bktext" style="min-height:0;height:44px;resize:none;flex:1" value="${esc(musicUrl())}" inputmode="url" autocomplete="off"><button class="btn small" id="musicSave">Mentés</button></div>
     <p class="muted version" style="margin:0">Verzió: ${APP_VERSION}</p>
@@ -285,6 +286,7 @@ function renderHome() {
   document.querySelectorAll('[data-plus]').forEach(b => b.onclick = () => { const v = b.dataset.plus; pickPlus = v === rec ? null : v; renderHome(); });
   document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => start(type, +b.dataset.jump, ST.level, plus));
   document.querySelectorAll('[data-set]').forEach(c => c.onchange = () => { ST.set[c.dataset.set] = c.checked; save(); });
+  if ($('#langSel')) $('#langSel').onchange = e => I18N.set(e.target.value);
   ['gearKb', 'gearDb'].forEach(id => { const el = $('#' + id); if (el) el.onchange = () => {
     ST.set.gear = Object.assign(gear(), { [id === 'gearKb' ? 'kb' : 'db']: +el.value }); save(); renderHome(); }; });
   if ($('#resume')) { $('#resume').onclick = () => start(run.type, run.idx, run.level || ST.level, run.plus || null, run.vis); $('#drop').onclick = () => { clearRun(); renderHome(); }; }
@@ -314,7 +316,7 @@ function deleteEntry(i) {
 function askDelete(i) {
   const e = ST.log[i]; if (!e) return;
   const d = new Date(e.d);
-  sheet(`<h2>Törlöd ezt az edzést?</h2><p class="muted" style="margin:0">${esc(d.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' }))} · ${esc(logLabel(e))} · ${minsTxt(e.sec)}. A statisztika, a hét és a szintlépés számlálója is frissül.</p>
+  sheet(`<h2>Törlöd ezt az edzést?</h2><p class="muted" style="margin:0">${esc(d.toLocaleDateString(I18N.locale, { month: 'long', day: 'numeric', weekday: 'long' }))} · ${esc(logLabel(e))} · ${minsTxt(e.sec)}. A statisztika, a hét és a szintlépés számlálója is frissül.</p>
     <div class="btns"><button class="btn primary" id="shYes">Igen, törlöm</button><button class="btn" id="shNo">Mégse</button></div>`, {
     shYes: () => { deleteEntry(i); closeSheet(); renderHome(); }, shNo: closeSheet });
 }
@@ -387,7 +389,7 @@ async function importFile(ev) {
 }
 
 function parseBackup(text, fromPaste) {
-  const bad = { error: fromPaste ? 'Ez nem érvényes Napi edzés mentés. Ellenőrizd, hogy a teljes mentést illesztetted be.' : 'Ez nem érvényes Napi edzés mentés. Ellenőrizd, hogy a jó fájlt választottad.' };
+  const bad = { error: fromPaste ? 'Ez nem érvényes NeonRep mentés. Ellenőrizd, hogy a teljes mentést illesztetted be.' : 'Ez nem érvényes NeonRep mentés. Ellenőrizd, hogy a jó fájlt választottad.' };
   let o;
   try { o = JSON.parse(String(text || '').trim()); } catch (e) { return bad; }
   if (!o || typeof o !== 'object' || Array.isArray(o)) return bad;
@@ -409,7 +411,7 @@ function parseBackup(text, fromPaste) {
 
 function confirmRestore({ data, exportedAt }) {
   const n = data.log.length, last = n ? new Date(data.log[n - 1].d) : null;
-  const dt = d => d.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
+  const dt = d => d.toLocaleDateString(I18N.locale, { year: 'numeric', month: 'long', day: 'numeric' });
   const exp = exportedAt && !isNaN(Date.parse(exportedAt)) ? dt(new Date(exportedAt)) : 'ismeretlen';
   sheet(`<h2>Visszaállítod a mentést?</h2>
     <div class="bksum">
@@ -481,14 +483,14 @@ const vib = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) 
 function pickVoice() {
   try {
     const vs = speechSynthesis.getVoices();
-    huVoice = vs.find(v => /^hu/i.test(v.lang)) || null;
+    const pre = I18N.speechLang.slice(0, 2); huVoice = vs.find(v => v.lang.replace('_', '-') === I18N.speechLang) || vs.find(v => v.lang.slice(0, 2).toLowerCase() === pre) || null;
     voiceMissing = vs.length > 0 && !huVoice;
   } catch (e) {}
 }
 if ('speechSynthesis' in window) { pickVoice(); try { speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {} }
 function speak(t) {
   if (!ST.set.voice || !('speechSynthesis' in window) || voiceMissing) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'hu-HU'; if (huVoice) u.voice = huVoice; u.rate = 1.05; speechSynthesis.speak(u); } catch (e) {}
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(I18N.tr(t)); u.lang = I18N.speechLang; if (huVoice) u.voice = huVoice; u.rate = 1.05; speechSynthesis.speak(u); } catch (e) {}
 }
 let WL = null;
 function keepAwake(on) {
